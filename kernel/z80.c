@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: z80.c,v 1.4 2002-06-01 21:43:18 dom Exp $
+ * $Id: z80.c,v 1.5 2002-06-02 12:05:31 dom Exp $
  *
  * Z80 Checksumming routines etc
  */
@@ -145,7 +145,7 @@ u16_t inet_cksum_pseudo(ip_header_t *ip,void *tcp,u8_t protocol,u16_t length)
         ld      l,(ix+4)        ;tcp header
         ld      h,(ix+5)        			    
         pop     bc
-        call    _TCPCsum
+	call	FastCSum_tcp
         ld      l,b
         ld      h,c
 #endasm
@@ -252,31 +252,6 @@ u16_t inet_cksum(void *buf,u16_t len)
                ld   d,a
                ret
 
-;Calculate IP checksum
-;Entry:   hl=buffer,bc=length
-;Exit:    bc=checksum, hl=buffer
-
-;Tcp fastcsum..enters with de holding total of pseudo header...
-
-._tcpcsum 
-  ;             push hl
-  ;             push de
-               ld   a,c
-               ld   c,b       ;  swap b,c
-               srl  c
-               rra            ; adjust counter for words
-               ld   b,a       ; (cb=#words)
-               ex   af,af     ; save cary for a single byte
-               or   c         ; check for zero also clear carry
-               jr   z,FastCsum_2   ; Only one or less bytes
-               inc  c
-               ld   a,b
-               or   a
-               jr   z,FastCsum_1b
-               jr   fastcsum_1
-
-
-
 /* 
  * Assembler Checksum routine
  *
@@ -287,13 +262,14 @@ u16_t inet_cksum(void *buf,u16_t len)
 .FastCSum
 ;	       push hl
 ;               push de
+               ld   de,0      ; de=sum
+.FastCsum_tcp
                ld   a,c
                ld   c,b       ;  swap b,c
                srl  c
                rra            ; adjust counter for words
                ld   b,a       ; (cb=#words)
                ex   af,af        ; save cary for a single byte
-               ld   de,0      ; de=sum
 	       ld   a,b
                or   c         ; check for zero also clear carry
                jr   z,FastCsum_2   ; Only one or less bytes
