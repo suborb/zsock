@@ -8,7 +8,7 @@
  *
  *	djm 18/2/2000
  *
- *      $Id: main.c,v 1.3 2002-05-11 21:00:55 dom Exp $
+ *      $Id: main.c,v 1.4 2002-05-12 22:20:42 dom Exp $
  */
 
 
@@ -20,14 +20,14 @@
 
 int	process;
 
-extern char   bigwindow[];
 static void   RedrawScreen();
+
 
 int main()
 {
 
 	/* Open ZSock library */
-	printf(bigwindow);
+	printf("\0017#1  \176(\200\0012C1\001S\001C");
 	printf("Querying library\n");
 	if (QueryPackage(LIB_TCP,0,0) == NULL ) {
 		printf("Couldn't open library\n");
@@ -48,7 +48,7 @@ int main()
 void __APPFUNC__ handlecmds(int cmd)
 {
     if (cmd >= 0x87 ) {
-/* On/offline options */
+	/* On/offline options */
 	switch (cmd) {
 	case 0x87:
 	    _DeviceOffline(HANGUP);
@@ -106,12 +106,8 @@ void __APPFUNC__ handlecmds(int cmd)
 void __APPFUNC__ RedrawScreen()
 {
 	user_pagein();			/* Page in Zsock seg 1 */
-	printf(bigwindow);
+	printf("\0017#1  \176(\200\0012C1\001S\001C");
 }
 
 
-#pragma asm
-._bigwindow
-	defb	1,'7','#','1',32,32,32+94,32+8,128
-	defb	1,'2','C','1',1,'S',1,'C',0
-#pragma endasm
+

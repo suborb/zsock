@@ -1332,7 +1332,7 @@ static void tcp_send(TCPSOCKET * s)
 	netstats.tcp_sentlen += senddata;
 #endif
 	pkt->tcp.cksum =
-	    inet_cksum_pseudo(pkt->ip, pkt->tcp,  prot_TCP,
+	    inet_cksum_pseudo(&pkt->ip, &pkt->tcp,  prot_TCP,
 			(ntohs(pkt->ip.length) -
 			 sizeof(struct ip_header)));
 
@@ -1366,12 +1366,12 @@ static void tcp_send(TCPSOCKET * s)
  *      Send a rst packet
  */
 
-static void tcp_rst(ip_header_t * hisip, tcp_header_t * oldtp)
+static void tcp_rst(ip_header_t *hisip, tcp_header_t *oldtp)
 {
     u8_t oldflags;
     struct pktdef2 {
-	ip_header_t *ip;
-	tcp_header_t *tcp;
+	ip_header_t   ip;
+	tcp_header_t  tcp;
     } *pkt;
 
     oldflags = oldtp->flags;

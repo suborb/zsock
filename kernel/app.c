@@ -7,6 +7,7 @@
 
 #include "zsock.h"
 
+#ifndef Z88
         
 #include <dor.h>
 
@@ -15,7 +16,7 @@
 #define HELP3	"This demo contains shared library facilities,"
 #define HELP4	"echo/qotd/finger services and a ping client"
 #define HELP5   ""
-#define HELP6   "v2.21 (c) 27/6/2001 D.J.Morris"
+#define HELP6   "v2.3 (c) xx/5/2002 D.J.Morris"
 
 #define APP_INFO "TCP Stack"
 #define APP_KEY  'S'
@@ -132,5 +133,6 @@ package_str zx_pstr[] = {
 
 #include <application.h>
 
+#endif
 
 /* THE END! */

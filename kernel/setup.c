@@ -7,7 +7,7 @@
  *
  *	djm 12/2/2000
  *
- *      $Id: setup.c,v 1.3 2002-05-11 21:00:55 dom Exp $
+ *      $Id: setup.c,v 1.4 2002-05-12 22:20:42 dom Exp $
  *
  */
 
@@ -22,11 +22,13 @@
 /* We use an array as a MALLOC heap */
 #define HPSIZE 15000
 extern int process;
-/* This gubbins must be in first file.. */
+
+#ifdef SCCZ80
 #pragma -zorg=32768
 #pragma -reqpag=1
 #pragma -defvars=16384
 #pragma output userheapvar=1
+#endif
 
 
 
@@ -76,7 +78,9 @@ int StackInit(int readconfig)
     ipaddr_t addr;
     int	i;
 
+#ifdef SCCZ80
     heapinit(HPSIZE);
+#endif
     sysdata.usericmp = 0;
     sysdata.mss = 512;
     if ( readconfig ) {
@@ -157,9 +161,11 @@ do_netstat()
     int	time;
     TCPSOCKET *s;
 
+#ifdef SCCZ80
     printf("Free: %d Largest: %d debug %d Conns are:\n",getfree(),getlarge(),sysdata.debug);
+#endif
 
-    printf("Lport\tDport\tFlags\tTimeou\t Dataq State\n");
+    printf("Lport\tDport\tFlags\tTimeout\tDataq\tState\n");
     for ( s = sysdata.tcpfirst ; s ; s = s->next ) { 
 	time=s->timeout-current_time();
 	if (time<0) time=0;

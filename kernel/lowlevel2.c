@@ -2,7 +2,7 @@
  *	Lowlevel plumbing..take 2!
  *
  *	This contains all the required lowlevel routines
- *	needed for the package
+ *	needed for the package - Z88 only
  *
  *	djm 10/2/2000
  */
@@ -10,6 +10,8 @@
 
 #include "zsock.h"
 
+
+#ifndef Z88
 extern int StackInit();
 
 extern void Interrupt();
@@ -632,3 +634,5 @@ void _GoTCP(void)
 	XREF	_sock_getinfo
 
 #endasm
+
+#endif /* Z88 */

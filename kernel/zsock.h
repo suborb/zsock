@@ -1,8 +1,9 @@
 /*
  *   Main ZSock Header File
  *
- *   $Id: zsock.h,v 1.2 2002-05-11 21:00:55 dom Exp $
+ *   $Id: zsock.h,v 1.3 2002-05-12 22:20:42 dom Exp $
  */
+
 
 
 #include <stdio.h>
@@ -10,16 +11,18 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#include <net/netstats.h>
-#include <net/tcpsock.h>
-#include <net/inet.h>
-#include <net/hton.h>
-#include <net/device.h>
-#include <net/zsockerrs.h>
-#include <net/zsfiles.h>
+
+#include "config.h"
+
+#include "net/netstats.h"
+#include "net/tcpsock.h"
+#include "net/inet.h"
+#include "net/hton.h"
+#include "net/device.h"
+#include "net/zsockerrs.h"
+#include "net/zsfiles.h"
 
 #include "nfuncs.h"
-#include "config.h"
 
 
 
@@ -67,6 +70,7 @@ enum { FALSE = 0, TRUE };
 
 
 /* System Data Structure */
+#ifdef Z80
 #pragma asm
 DEFVARS 0 {
 	version ds.w	1
@@ -75,14 +79,15 @@ DEFVARS 0 {
 	page2	ds.b	1
 }
 #pragma endasm
+#endif
 
 struct sys {
-	u16_t	  version;	/* Marker */
+	u16_t	   version;	/* Marker */
 	u8_t	   page0;	/* 8192 - 16384 */
 	u8_t	   page1;	/* 16384 - 32768 */
 	u8_t	   page2;       /* 32768 - 49152 */
-        u16_t      tcpport;
-        u16_t      udpport;
+        tcpport_t      tcpport;
+        tcpport_t      udpport;
         u16_t      icmpseq;
         u16_t      ipseq;
         ipaddr_t   myip;

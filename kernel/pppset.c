@@ -12,7 +12,7 @@
  */
 
 /* sccz80 magic */
-#ifdef Z80
+#ifdef SCCZ80
 #pragma -shared-file
 #ifdef OLDPACK
 #pragma -shareoffset=14

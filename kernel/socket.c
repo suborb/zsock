@@ -23,6 +23,7 @@
 #include "zsock.h"
 
 /* Some sccz80 magic */
+#ifdef SCCZ80
 #ifdef OLDPACK
 #pragma -shareoffset=14
 #else
@@ -30,6 +31,7 @@
 #endif
 
 #pragma -shared-file
+#endif
 
 
 extern ipaddr_t resolve_i(char *);

@@ -3,10 +3,49 @@
  *
  *     (C) 1999-2002 D.J.Morris <dom@jadara.org.uk>
  *
- *     $Id: z80.c,v 1.1 2002-05-11 21:00:55 dom Exp $
+ *     $Id: z80.c,v 1.2 2002-05-12 22:20:42 dom Exp $
  */
 
 #include "zsock.h"
+
+
+#ifdef Z88
+u32_t current_time()
+{
+#asm
+    INCLUDE "#time.def"
+        ld      de,1
+        call_oz(gn_gmt) ;abc, a=MSB
+        ld      d,0
+        ld      e,a
+        ld      h,b
+        ld      l,c
+#endasm
+}
+
+u32_t GetSeqNum()
+{
+#asm
+          ld   de,1
+          call_oz (gn_gmt)
+          ld    l,c
+          ld    h,b
+          ld   e,a
+          ld   d,c      ;more random
+#endasm
+}
+#else
+/* Won't work */
+u32_t current_time()
+{
+    return 0;
+}
+
+u32_t GetSeqNum()
+{
+    return 0;
+}
+#endif
 
 
 

@@ -1,7 +1,7 @@
 /*
  *     Routines to handle device drivers
  *
- *     $Id: device.c,v 1.1 2002-05-11 21:00:55 dom Exp $
+ *     $Id: device.c,v 1.2 2002-05-12 22:20:42 dom Exp $
  *
  */
 
@@ -12,10 +12,6 @@
 
 
 struct pktdrive       *device;       /* Our device */
-
-
-
-
 
 
 

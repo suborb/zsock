@@ -39,7 +39,7 @@ extern void     SendPacket(ip_header_t *buf,u16_t len);
 
 
 /* loopback.c */
-extern void      loopback_init();
+extern int       loopback_init();
 extern void      loopback_send(void *buf,u16_t len);
 extern void      loopback_recv();
 
@@ -48,18 +48,9 @@ extern u8_t     *inet_ntoa_i(ipaddr_t in,char *buffer);
 extern ipaddr_t __FASTCALL__ inet_addr_i(u8_t *cp);
 
 
-/* malloc.c */
+/* pbuf.c */
 extern void       pkt_free(void *buf);
 extern void      *pkt_alloc(u16_t size);
-#if 0
-extern void      *malloc(u16_t size);
-extern void      *calloc(u16_t num,u16_t size);
-extern void       free(void *);
-extern void       heapinit(u16_t size);
-extern int        getlarge(void);
-extern int        getfree(void);
-#endif
-
 
 
 /* tcp.c */

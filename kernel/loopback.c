@@ -11,17 +11,24 @@
 #include "zsock.h"
 
 
+
 /*
  *	Variables used by this module
  */
+
+struct _loopback {
+    void *next;
+    int   len;
+};
+
+static struct _loopback	*localfirst;
+static struct _loopback	*locallast;
+
 #ifdef Z80
-static void	*localfirst;
-static void	*locallast;
-
-
-void loopback_init()
+int loopback_init()
 {
     locallast = localfirst = NULL;
+    return sizeof(struct _loopback);
 }
 
 void loopback_send(void *buf, u16_t length)
@@ -102,17 +109,46 @@ void loopback_recv()
 }
 #else
 
-void loopback_init()
+int loopback_init()
 {
-
+    locallast = localfirst = NULL;
+    return sizeof (struct _loopback);
 }
 
-void loopback_send(void *buf, u16_t length)
+void loopback_send(void *buf, int length)
 {
+    struct _loopback *loop;
+    struct _loopback *llast;
+
+    loop = ( buf - sizeof(struct _loopback));
+    llast = locallast;
+    locallast = loop;
+    if ( llast != NULL ) {
+	llast->next = loop;
+    } else {
+	localfirst = loop;
+    }
+    loop->next = NULL;
+    loop->len  = length;      
 }
 
 void loopback_recv()
 {
+    struct _loopback *loop;
+    void             *pkt;
 
+    loop - localfirst;
+
+    if ( loop == NULL )
+	return;
+
+    localfirst = loop->next;
+
+    if ( loop->next == NULL )
+	locallast = NULL;
+
+    pkt = loop + sizeof(struct _loopback);
+    PktRcvIP(pkt,loop->len);
+    pkt_free(pkt);
 }
 #endif
