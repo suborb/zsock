@@ -73,8 +73,15 @@ void Ping()
 	    timeout = set_timeout(100);
 	    if ( ping_send(addr,&ident) ) 
 		ident++;
+	    else
+		break;
 	} 
+#ifdef Z88
 	if (getk() == 27 ) break;
+#else
+	if ( ident == 20 )
+	    break;
+#endif
 	BUSYINT();
    }
 
@@ -113,21 +120,21 @@ static int ping_handler(ip_header_t *ip,icmp_header_t *icmp)
 {
     char	buffer[18];
     u32_t	*ptr;
-    u32_t	time;
+    u32_t	times;
     int	        rtt;
     int	        i;
 
     if (icmp->type != ECHO_REPLY ) 
 	return 1;
 
-    time = current_time();
+    times = current_time();
 
     ptr = &icmp->unused;
 
     for (i = 0; i < MAXPINGS; i++) {
 	if (*ptr == pingstat[i].sequence) {
 	    pingstat[i].used = 0;
-	    rtt = (time - pingstat[i].xmittime);
+	    rtt = (times - pingstat[i].xmittime);
 	    pingav += rtt;
 	    rtt *= 10;
 	    printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%d ms\n",htons(ip->length),inet_ntoa_i(ip->source,buffer),(int)(icmp->unused),ip->ttl, rtt );

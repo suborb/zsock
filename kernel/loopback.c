@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: loopback.c,v 1.4 2002-05-13 20:00:48 dom Exp $
+ * $Id: loopback.c,v 1.5 2002-05-13 21:30:22 dom Exp $
  *
  * Simple loopback network interface
  */
@@ -145,12 +145,12 @@ int loopback_init()
     return sizeof (struct _loopback);
 }
 
-void loopback_send(void *buf, int length)
+void loopback_send(void *buf, u16_t length)
 {
     struct _loopback *loop;
     struct _loopback *llast;
 
-    loop = ( buf - sizeof(struct _loopback));
+    loop = ( buf - sysdata.overhead);
     llast = locallast;
     locallast = loop;
     if ( llast != NULL ) {
@@ -167,7 +167,7 @@ void loopback_recv()
     struct _loopback *loop;
     void             *pkt;
 
-    loop - localfirst;
+    loop = localfirst;
 
     if ( loop == NULL )
 	return;
@@ -177,7 +177,7 @@ void loopback_recv()
     if ( loop->next == NULL )
 	locallast = NULL;
 
-    pkt = loop + sizeof(struct _loopback);
+    pkt = (void *)loop + sysdata.overhead;
     PktRcvIP(pkt,loop->len);
     pkt_free(pkt);
 }

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: generic.c,v 1.2 2002-05-13 20:00:48 dom Exp $
+ * $Id: generic.c,v 1.3 2002-05-13 21:30:22 dom Exp $
  *
  * Cross platform routines
  */
@@ -84,19 +84,23 @@ u16_t inet_cksum_pseudo(ip_header_t *ip,void *phdr,u8_t protocol,u16_t length)
 
 u16_t ip_check_cksum(ip_header_t *buf)
 {
-    return ( inet_cksum(buf,buf->version&15 << 2 ) );
+    u16_t cksum;
+    cksum = inet_cksum(buf,(buf->version&15) << 2 );
+    return cksum;
 }
 
 void inet_cksum_set(ip_header_t *buf)
 {
     buf->cksum = 0;
-    buf->cksum = inet_cksum(buf,buf->version&15 << 2 );
+    buf->cksum = htons(inet_cksum(buf,(buf->version&15) << 2 ));
 }
+
 
 u16_t inet_cksum(void *data, u16_t len)
 {
     u16_t acc;
-    u8_t *buf = data;
+    u16_t *buf = data;
+
   
     for(acc = 0; len > 1; len -= 2) {
 	acc += *buf;
@@ -110,11 +114,12 @@ u16_t inet_cksum(void *data, u16_t len)
 
     /* add up any odd byte */
     if ( len == 1 ) {
-	acc += htons(((u16_t)(*buf)) << 8);
-	if(acc < htons(((u16_t)(*buf)) << 8)) {
+	acc += htons(((u16_t)(*(u8_t *)buf)) << 8);
+	if(acc < htons(((u16_t)(*(u8_t *)buf)) << 8)) {
 	    ++acc;
 	}
     }
 
-    return acc;
+
+    return htons(~acc);
 }

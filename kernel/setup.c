@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: setup.c,v 1.5 2002-05-13 20:00:48 dom Exp $
+ * $Id: setup.c,v 1.6 2002-05-13 21:30:22 dom Exp $
  *
  */
 
@@ -63,9 +63,11 @@ struct sys sysdata;
 struct sysstat_s netstats;
 #endif
 
+#ifdef SCCZ80
 HEAPSIZE(HPSIZE)
+#endif
 
-static char version[]="$VER:ZSock v2.3 (c) 2002 D.Morris\n\r";
+char version[]="$VER:ZSock v2.3 (c) 2002 D.Morris\n\r";
 
 
 static ipaddr_t       defaultip = IP_ADDR(192,168,155,88);
@@ -77,6 +79,7 @@ void Interrupt()
     void       *pkt;
     int         value;
 
+#ifdef Z88
     bind = PageDevIn();
     /* Read in some bytes and handle the packet */
     if (value = device->readfn(&pkt) ) {
@@ -86,6 +89,7 @@ void Interrupt()
     if ( value = device->sendfn() ) 
 	pkt_free((void *)value);
     PageDevOut(bind);
+#endif
     /* Kludgey TCP timeout */
     if ( --sysdata.counter == 0) {  
 	tcp_retransmit();
@@ -108,10 +112,10 @@ int StackInit(int readconfig)
 #endif
     sysdata.usericmp = 0;
     sysdata.mss = 512;
+#ifdef Z88
     if ( readconfig ) {
 	config_dns();            /* Read in DNS information */
 	sysdata.myip=defaultip;	
-
         if ( config_hostname(name,sizeof(name)) == 0  ) {
                 if ( config_hostaddr(name,sizeof(name)) == 0 ) {
                         addr = inet_addr_i(name);
@@ -120,11 +124,18 @@ int StackInit(int readconfig)
                 }
         } 
 	config_device();        /* Find device file info */
+
     }
+#else
+    sysdata.myip=defaultip;	
+    sysdata.overhead = 16;
+#endif
     sysdata.counter = 50;
     sysdata.debug   = 0;
+#ifdef Z88
     if ( device_attach(device) == FALSE )
 	return (1);  
+#endif
     loopback_init();   /* Setup loopback interface */
     tcp_init();        /* Initialise TCP layer */
     udp_init();        /* Initialise UDP layer */
@@ -164,12 +175,14 @@ UserConfig()
 		} else break;
 	}
 	putchar('\n');
+#ifdef Z88
 	printf("\nFilename of network device driver: ");
 	fgets_cons(buffer,39);
 	putchar('\n');
 	if (strlen(buffer) ) {
 	    device = device_insert(buffer);
 	}
+#endif
 	StackInit(FALSE);
 	if (j == 0) 
 	    return;
@@ -201,7 +214,7 @@ do_netstat()
 
 figures()
 {
-    int	*ap=netstats;
+    int	*ap = (int *)&netstats;
     unsigned char	*text;
     int	i;
 
@@ -216,7 +229,7 @@ figures()
 	putchar('\n');
 	++ap;       	
 	if (i && i%6 == 0 ) {
-	    getkey();
+	    GETKEY();
 	}
     }
 }

@@ -8,7 +8,7 @@
  *
  *	djm 18/2/2000
  *
- *      $Id: main.c,v 1.4 2002-05-12 22:20:42 dom Exp $
+ *      $Id: main.c,v 1.5 2002-05-13 21:30:22 dom Exp $
  */
 
 
@@ -16,7 +16,8 @@
 #include <stdlib.h>
 #include <z88.h>
 #include <net/misc.h>
-#include "config.h"
+
+
 
 int	process;
 

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: config.h,v 1.5 2002-05-13 20:00:48 dom Exp $
+ * $Id: config.h,v 1.6 2002-05-13 21:30:22 dom Exp $
  *
  * Machine tweaking
  *
@@ -54,6 +54,7 @@
 #define BUSYINT()  Interrupt()
 #else
 #define BUSYLOOP() Interrupt()
+#define BUSYINT()  Interrupt()
 #define PageDevIn() 0
 #define PageDevOut(x)
 #endif
@@ -83,9 +84,13 @@ typedef int i32_t;
 #define return_c(x,y) { errno = x; return (y); }
 #define return_ncv(x)  { errno = 0; return (x); }
 #define return_nc    { errno = 0; return; }
+#define GETKEY()  fgetc(stdin)
+#define getk()    0
+#define fgets_cons(x,y) fgets(x,y,stdin);
 #else
 #define return_ncv(x)  return_nc(x)
 #define return_nc return_nc;
+#define GETKEY() getkey()
 
 #endif
 

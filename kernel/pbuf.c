@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: pbuf.c,v 1.2 2002-05-13 20:00:48 dom Exp $
+ * $Id: pbuf.c,v 1.3 2002-05-13 21:30:22 dom Exp $
  *
  */
 
@@ -47,8 +47,7 @@ void pkt_free(void *buf)
 }
 
 
-void *pkt_alloc(size)
-        int    size;
+void *pkt_alloc(u16_t size)
 {
         void *ptr;
 
