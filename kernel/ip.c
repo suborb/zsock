@@ -1,7 +1,7 @@
 /*
  *      IP Routines for Small C+ Demo TCP stack
  *
- *      $Id: ip.c,v 1.3 2002-05-13 21:30:22 dom Exp $
+ *      $Id: ip.c,v 1.4 2002-05-14 22:41:41 dom Exp $
  */
 
 
@@ -39,7 +39,6 @@ void PktRcvIP(void *buf,u16_t len)
 
     /* Checksum packet, if non-zero then it's duff */
     if ( ip_check_cksum(buf) ) {
-	printf("Bad checksum\n");
 #ifdef NETSTAT
 	++netstats.ip_badck;
 #endif
@@ -127,7 +126,6 @@ void ip_send(ip_header_t *ip,u16_t len,u8_t prot, u8_t ttl)
     /* Have to located correct interface then checksum the packet */
 
 
-#ifdef Z88
     if (ip->dest == sysdata.myip || ip->dest == loopbackip ) {
 	loopback_send(ip,len);
     } else {       /* Send it out to the device */
@@ -135,9 +133,6 @@ void ip_send(ip_header_t *ip,u16_t len,u8_t prot, u8_t ttl)
 	device->queuefn(ip,len);
 	PageDevOut(binding);
     }
-#else
-    loopback_send(ip,len);
-#endif
 }
 
 

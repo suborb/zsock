@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: setup.c,v 1.6 2002-05-13 21:30:22 dom Exp $
+ * $Id: setup.c,v 1.7 2002-05-14 22:41:41 dom Exp $
  *
  */
 
@@ -79,17 +79,15 @@ void Interrupt()
     void       *pkt;
     int         value;
 
-#ifdef Z88
     bind = PageDevIn();
     /* Read in some bytes and handle the packet */
     if (value = device->readfn(&pkt) ) {
 	PktRcvIP(pkt,value);    
     }
     /* Send out some bytes... */
-    if ( value = device->sendfn() ) 
-	pkt_free((void *)value);
+    if ( pkt = device->sendfn() ) 
+	pkt_free(pkt);
     PageDevOut(bind);
-#endif
     /* Kludgey TCP timeout */
     if ( --sysdata.counter == 0) {  
 	tcp_retransmit();
@@ -129,13 +127,12 @@ int StackInit(int readconfig)
 #else
     sysdata.myip=defaultip;	
     sysdata.overhead = 16;
+    device = &z88slip;
 #endif
     sysdata.counter = 50;
     sysdata.debug   = 0;
-#ifdef Z88
     if ( device_attach(device) == FALSE )
 	return (1);  
-#endif
     loopback_init();   /* Setup loopback interface */
     tcp_init();        /* Initialise TCP layer */
     udp_init();        /* Initialise UDP layer */

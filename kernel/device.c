@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: device.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ * $Id: device.c,v 1.4 2002-05-14 22:41:41 dom Exp $
  *
  * Handle device drivers
  */
@@ -58,7 +58,7 @@ void device_report()
 	PageDevOut(bind);
 }
 
-
+#ifdef Z88
 struct pktdrive *device_insert(char *devfile)
 {
     int	bind;
@@ -78,6 +78,7 @@ struct pktdrive *device_insert(char *devfile)
     }
     PageDevOut(bind);
 }
+#endif
 
 /*
  *	Read in a device driver to DRIVER_ADDR (8192)
@@ -85,6 +86,7 @@ struct pktdrive *device_insert(char *devfile)
  *	Returns length read or 0 for no file etc..
  */
 
+#ifdef Z88
 int device_load(char *name)
 {
     int	bind;
@@ -100,6 +102,7 @@ int device_load(char *name)
     PageDevOut(bind);
     return(len);
 }
+#endif
 
 
 
@@ -118,7 +121,7 @@ int device_attach(struct pktdrive *ptr)
 {
     int	bind;
     bind = PageDevIn();
-    if (device_check(ptr)==NULL) {
+    if (device_check(ptr) == FALSE) {
 	PageDevOut(bind);
 	return(FALSE);
     }

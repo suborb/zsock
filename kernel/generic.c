@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: generic.c,v 1.3 2002-05-13 21:30:22 dom Exp $
+ * $Id: generic.c,v 1.4 2002-05-14 22:41:41 dom Exp $
  *
  * Cross platform routines
  */
@@ -71,15 +71,21 @@ u32_t GetSeqNum()
 /* I think this is correct... */
 u16_t inet_cksum_pseudo(ip_header_t *ip,void *phdr,u8_t protocol,u16_t length)      
 {
-    u16_t  acc;
-    tcp_header_t *tcp = phdr;
+    u16_t  acc,hacc;
 
-    acc = inet_cksum(&protocol,1);
 
-    acc += inet_cksum(&ip->source,8);
-    acc += inet_cksum(tcp,length);
+    acc = htons((u16_t)protocol) + htons(length);
+    hacc = ntohs(~inet_cksum(&ip->source,8));
+    if ( ( acc += hacc ) < hacc )
+	++acc;
 
-    return acc;
+    hacc = ntohs(~inet_cksum(phdr,length));
+    if ( ( acc += hacc ) < hacc )
+	++acc;
+  
+    printf("cksum = %d\n", htons(~acc));
+    return (~acc);
+
 }
 
 u16_t ip_check_cksum(ip_header_t *buf)

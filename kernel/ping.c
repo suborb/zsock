@@ -79,7 +79,7 @@ void Ping()
 #ifdef Z88
 	if (getk() == 27 ) break;
 #else
-	if ( ident == 20 )
+	if ( ident == 4 )
 	    break;
 #endif
 	BUSYINT();

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.5 2002-05-13 20:00:48 dom Exp $
+ * $Id: tcp.c,v 1.6 2002-05-14 22:41:41 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
@@ -118,7 +118,7 @@ static void tcp_send(TCPSOCKET * s);
 void tcp_init()
 {
     sysdata.tcpport = 1024;
-    sysdata.tcpfirst = 0;
+    sysdata.tcpfirst = NULL;
     service_registertcp();
 }
 
@@ -254,8 +254,9 @@ TCPSOCKET *tcp_listen(ipaddr_t ipaddr,
 	    return_c(EADDRINUSE,NULL);
 
 	lport = sysdata.tcpport;
-    } else if (CheckPort(sysdata.tcpfirst, lport))
+    } else if (CheckPort(sysdata.tcpfirst, lport)) {
 	return_c(EADDRINUSE,NULL);
+    }
 
     if ((s = tcp_new_socket()) == 0)
 	return_c(ENOMEM,NULL);
@@ -618,11 +619,12 @@ static TCPSOCKET *tcp_find_socket(ip_header_t * ip, tcp_header_t * tp)
 {
     TCPSOCKET *s;
 
-    for (s = sysdata.tcpfirst; s; s = s->next)
+    for (s = sysdata.tcpfirst; s; s = s->next) {
 	if (s->ip_type == prot_TCP && s->hisport != 0 &&
 	    tp->dstport == s->myport &&
 	    tp->srcport == s->hisport && ip->source == s->hisaddr)
 	    return s;
+    }
     return NULL;
 }
 
@@ -1253,7 +1255,6 @@ static void tcp_send(TCPSOCKET * s)
     for (i = 0; i < s->cwindow; i++) {
 	senddata = min(sendtotdata, s->mss);
 
-
 	if ((pkt = pkt_alloc(sizeof(struct pktdef) + senddata)) == NULL)
 	    return;
 
@@ -1304,9 +1305,9 @@ static void tcp_send(TCPSOCKET * s)
 	pkt->tcp.cksum =
 	    inet_cksum_pseudo(&pkt->ip, &pkt->tcp,  prot_TCP,
 			(ntohs(pkt->ip.length) -
-			 sizeof(struct ip_header)));
+			 sizeof(ip_header_t)));
 
-        ip_send((ip_header_t *) pkt, htons(pkt->ip.length),prot_TCP,s->ttl);
+        ip_send((ip_header_t *) pkt, ntohs(pkt->ip.length),prot_TCP,s->ttl);
 	sendtotlen += senddata;
 	sendtotdata -= senddata;
 	startdata += senddata;
