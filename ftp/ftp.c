@@ -49,6 +49,8 @@ int ftp_data(char *buf, int direction, FILE *fp)
 	ptr = input_buffer;
 	while (*ptr && *ptr != '(')
 	    ptr++;
+	++ptr;
+	dest = 0;
 	for ( i = 0; i < 4; i++ ) {
 	    dest = ( dest << 8 ) + atoi(ptr);
 	    if ( ( ptr = strchr(ptr,',') ) == NULL ) {
@@ -62,9 +64,12 @@ int ftp_data(char *buf, int direction, FILE *fp)
 	    printf("Couldn't parse PASV response\n");
 	    return -1;
 	}
+	++ptr;
 	port = ( port << 8 ) + atoi(ptr);
 	dest = htonl(dest);
+#if 0
 	port = htons(port);
+#endif
 	ftpdata_fd = net_connect_ip(dest,port);
     } else {
 #define hiword(x)       ((u16_t)((x) >> 16))
@@ -84,7 +89,7 @@ int ftp_data(char *buf, int direction, FILE *fp)
 	}
     }
     ret = ftp_send(buf);
-    if ( ret == 125 || ret == 150 ) {         /* 150 opening ascii connection 125 = data conn already open */
+    if ( passive || ret == 125 || ret == 150 ) {         /* 150 opening ascii connection 125 = data conn already open */
 	if ( !passive ) {
 	    if ( net_wait_connect() == -1 ) {
 		printf("Child listener timed out");

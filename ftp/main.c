@@ -5,10 +5,13 @@
 #include "ftp.h"
 
 
-int main()
+int main(int argc, char *argv[])
 {
     char  buf[80];
 
+    if ( argc == 2 ) {
+	cmd_open(argc,argv);
+    }
 
     while ( 1 ) {
 	printf("> ");

@@ -97,7 +97,7 @@ int exec_cmd(int argc, char *argv[])
 
 int cmd_passive(int argc, char *argv[])
 {
-#if 0
+#if 1
     if ( argc != 1 )
 	return -1;
 
@@ -198,6 +198,11 @@ int cmd_open(int argc, char *argv[])
 {
     tcpport_t port = 21;
 
+    if ( argc < 2 ) {
+	printf("open hostname [port]\n");
+	return 0;
+    }
+
     if ( argc == 3 && ( port = atoi(argv[2] ) ) == 0 ) {
 	printf("Invalid port specified\n");
 	return -1;
@@ -219,7 +224,8 @@ int cmd_close(int argc, char *argv[])
 
 int cmd_quit(int argc, char *argv[])
 {
-    ftp_send("QUIT\r\n");
+    if ( connected ) 
+	ftp_send("QUIT\r\n");
     exit(0);
 }
 
