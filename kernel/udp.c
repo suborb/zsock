@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: udp.c,v 1.5 2002-06-01 21:43:18 dom Exp $
+ * $Id: udp.c,v 1.6 2002-06-08 16:26:03 dom Exp $
  *
  */
 
@@ -51,7 +51,11 @@ extern void RegisterServicesUDP();
 
 static UDPSOCKET    *udp_new_socket();
 
+#ifdef CYBIKO
+unsigned long udpbroadcast = 0xFFFFFFFF;
+#else
 ipaddr_t udpbroadcast = IP_ADDR(255,255,255,255);
+#endif
 
 /*
  *      Initialise UDP services
@@ -97,9 +101,11 @@ UDPSOCKET *udp_open(ipaddr_t ipdest,
 	s->sockmode=UDPMODE_CKSUM;	/* Default to checksum */
 	s->ttl=255;			/* UDP default TTL */
 	s->tos=0;			/* UDP default tos */
-        if (s->datahandler == NULL )
-/* No data handler instigate receiver buffer */
-                if ((s->recvbuff=malloc(UDPBUFSIZ))!=NULL) s->recvsize=UDPBUFSIZ;
+        if (s->datahandler == NULL ) {
+	    /* No data handler instigate receiver buffer */
+	    if ( (s->recvbuff = malloc(UDPBUFSIZ)) != NULL) 
+		s->recvsize=UDPBUFSIZ;
+	}
         return_ncv(s);
 }
 
@@ -163,7 +169,9 @@ void udp_handler(ip_header_t *ip,u16_t length)
     /* Now for passive */
     if ( s == NULL ) {
 	for ( s = sysdata.udpfirst ; s ; s = s->next ) {
-	    if ( s->ip_type == prot_UDP && (s->hisaddr == 0 || s->hisaddr==udpbroadcast) && up->dstport == s->myport ) {
+	    if ( s->ip_type == prot_UDP && 
+		 (s->hisaddr == 0 || s->hisaddr==udpbroadcast) && 
+		 up->dstport == s->myport ) {
 		break;
 	    }
 	}

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: icmp.c,v 1.6 2002-06-01 21:43:18 dom Exp $
+ * $Id: icmp.c,v 1.7 2002-06-08 16:26:03 dom Exp $
  *
  * ICMP Routines
  */
@@ -206,10 +206,12 @@ void icmp_handler(void *buf,u16_t len)
     ++netstats.icmp_inp[icmp->type];
 #endif
 
+#ifndef CYBIKO
     if (sysdata.usericmp) {
 	if ( sysdata.usericmp(ip,icmp) == 0 ) 
 	    return;
     }
+#endif
     /* Point to the IP address in the returned packet */
     ret = (struct ip_header *) (icmp->data);
     switch (icmp->type) {

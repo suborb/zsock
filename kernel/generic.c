@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: generic.c,v 1.5 2002-06-01 21:43:18 dom Exp $
+ * $Id: generic.c,v 1.6 2002-06-08 16:26:03 dom Exp $
  *
  * Cross platform routines
  */
@@ -40,7 +40,7 @@
 
 #include "zsock.h"
 
-#ifndef __CPM__
+#if !__CPM__ && !CYBIKO
 #include <sys/time.h>
 
 /* Returns number of 10ms since start of day */

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: socket_int.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ * $Id: socket_int.c,v 1.4 2002-06-08 16:26:03 dom Exp $
  *
  * Routines used by the internal daemons
  */
@@ -116,8 +116,8 @@ int  sock_read_i(
 void kill_socket(tcpport_t myport,TCPSOCKET *s)
 {
 	TCPSOCKET *sp;
-	while (1) {
-	    if ( s == NULL ) 
+	for (;;) {
+	    if ( s == (TCPSOCKET *)NULL ) 
 		return;
 	    sp = s->next;
 	    if (s->myport == htons(myport) ) { //&& s->hisaddr == 0L ) {

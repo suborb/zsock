@@ -31,11 +31,11 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: zsock.h,v 1.5 2002-06-01 21:43:18 dom Exp $
+ * $Id: zsock.h,v 1.6 2002-06-08 16:26:03 dom Exp $
  *
  */
 
-
+#ifndef CYBIKO
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -43,6 +43,10 @@
 #include <ctype.h>
 #ifndef SCCZ80
 #include <errno.h>
+#endif
+#else
+#include "cybiko.h"
+#include "cybiko_error.h"
 #endif
 
 
@@ -103,7 +107,9 @@
 #endif
 
 enum { NO = 0, YES };
+#ifndef CYBIKO
 enum { FALSE = 0, TRUE };
+#endif
 
 
 
@@ -147,6 +153,7 @@ struct sys {
 
 extern struct pktdrive *device;      /* Pointer to device */
 extern struct pktdrive z88slip;      /* Default device */
+extern struct pktdrive z88ppp;      /* Default device */
 extern struct sys sysdata;           /* System info */
 extern struct sysstat_s netstats;    /* Netstat stats */
 

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: slip_gen.c,v 1.2 2002-06-01 21:43:18 dom Exp $
+ * $Id: slip_gen.c,v 1.3 2002-06-08 16:26:03 dom Exp $
  *
  */
 
@@ -138,7 +138,7 @@ int SlipInit()
 {
     printf("initialising slip\n");
 #ifndef SCCZ80
-    sock = open_terminal();
+    sock = open_terminal("slip");
 #endif
     slip_outstate = inslipflag = online = 0;
     slipfirst = NULL;

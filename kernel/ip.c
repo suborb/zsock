@@ -1,18 +1,20 @@
 /*
  *      IP Routines for Small C+ Demo TCP stack
  *
- *      $Id: ip.c,v 1.5 2002-06-01 21:43:18 dom Exp $
+ *      $Id: ip.c,v 1.6 2002-06-08 16:26:03 dom Exp $
  */
 
 
 #include "zsock.h"
 
 
-#define IP_DF	0x4000
 
 
-
+#ifdef CYBIKO
+static unsigned long loopbackip = 0x007f0100;
+#else
 static ipaddr_t loopbackip = IP_ADDR(127,0,0,1);
+#endif
 
 
 

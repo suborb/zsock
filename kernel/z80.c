@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: z80.c,v 1.5 2002-06-02 12:05:31 dom Exp $
+ * $Id: z80.c,v 1.6 2002-06-08 16:26:03 dom Exp $
  *
  * Z80 Checksumming routines etc
  */
@@ -66,6 +66,21 @@ u32_t GetSeqNum()
 #endasm
 }
 #else
+#ifdef __CPM__
+/* Uses extensions to ZXCC */
+u32_t current_time()
+{
+#asm
+    ld    c,0x99
+    call  5
+#endasm
+}
+
+u32_t GetSeqNum()
+{
+    return (current_time());
+}
+#else
 /* Won't work */
 u32_t current_time()
 {
@@ -76,6 +91,7 @@ u32_t GetSeqNum()
 {
     return 0;
 }
+#endif
 #endif
 
 

@@ -11,7 +11,7 @@
 
 
 
-int open_terminal()
+int open_terminal(char *mode)
 {
     int    master,slave;
     char   cmd[2048];
@@ -29,11 +29,14 @@ int open_terminal()
         perror("fork");
         exit(1);
     case 0:   /* Child */
-        snprintf(cmd,sizeof(cmd),"/home/dom/bin/slattach -e -s 38400 -p slip %s\n",slave_name);
+        snprintf(cmd,sizeof(cmd),"/home/dom/bin/slattach -e -s 38400 -p %s %s\n",mode,slave_name);
         printf("%s\n",cmd);
         system(cmd);
         exit(0);
     default: /* Parent */
+	sleep(1);
+	system("/sbin/ifconfig sl0 192.168.155.12 dstaddr 192.168.155.88 up\n");
+
     }
 
     // fcntl(fd, F_SETFL, O_NDELAY);

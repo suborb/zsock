@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: setup.c,v 1.8 2002-06-01 21:43:18 dom Exp $
+ * $Id: setup.c,v 1.9 2002-06-08 16:26:03 dom Exp $
  *
  */
 
@@ -67,7 +67,7 @@ struct sysstat_s netstats;
 HEAPSIZE(HPSIZE)
 #endif
 
-char version[]="$VER:ZSock v2.3 (c) 2002 D.Morris\n\r";
+char version[]="$VER:ZSock v2.31 (c) 2002 D.Morris\n\r";
 
 
 static ipaddr_t       defaultip = IP_ADDR(192,168,155,88);
@@ -202,7 +202,7 @@ UserConfig()
 do_netstat()
 {
     static char *st[]=
-    { "LISTEN","SYNSENT","SYNREC","ESTAB","ESTABCL",
+    { "NONE", "LISTEN","SYNSENT","SYNREC","ESTAB","ESTABCL",
       "FINWT1","FINWT2","CLOSEWT","CLOSING","LASTACK",
       "TIMEWT","CLOSEMSL","CLOSED" };  
     int	time;

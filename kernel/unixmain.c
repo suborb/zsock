@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: unixmain.c,v 1.1 2002-06-01 22:57:38 dom Exp $
+ * $Id: unixmain.c,v 1.2 2002-06-08 16:26:03 dom Exp $
  *
  * Unix startup
  */
@@ -46,7 +46,7 @@ struct sysstat_s netstats;
 #endif
 #endif
 
-
+#ifndef LIB_ZSOCK
 int main()
 {
     printf("Starting up\n");
@@ -58,3 +58,5 @@ int main()
     while ( 1) 
 	BUSYINT();
 }
+
+#endif

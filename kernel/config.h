@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: config.h,v 1.7 2002-06-01 21:43:18 dom Exp $
+ * $Id: config.h,v 1.8 2002-06-08 16:26:03 dom Exp $
  *
  * Machine tweaking
  *
@@ -72,6 +72,7 @@ typedef unsigned int u32_t;
 typedef char i8_t;
 typedef short i16_t;
 typedef int i32_t;
+typedef unsigned char bool_t;
 #endif
 
 /* Remove qualifiers used by sccz80 */
@@ -87,15 +88,20 @@ typedef int i32_t;
 #define GETKEY()  fgetc(stdin)
 #define getk()    0
 #define fgets_cons(x,y) fgets(x,y,stdin);
+#define iferror if ( ser_error )
 #else
 #define return_ncv(x)  return_nc(x)
 #define return_nc return_nc
 #define GETKEY() getkey()
-#ifdef __CPM__
-#define getk()   0
+  #ifdef __CPM__
+  #define getk()   0
+  #endif
 #endif
 
+#ifdef CYBIKO
+typedef int pid_t;
 #endif
+
 
 #endif
 

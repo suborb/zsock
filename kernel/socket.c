@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: socket.c,v 1.5 2002-06-01 21:43:18 dom Exp $
+ * $Id: socket.c,v 1.6 2002-06-08 16:26:03 dom Exp $
  *
  * API Routines
  */
@@ -226,6 +226,41 @@ void  *sock_pair_listen(ipaddr,lport,dport,datahandler,protocol)
 	}
 	return_c(EPROTONOSUPPORT,NULL);
 }
+
+#if 0
+void *sock_bind(ipaddr,lport,datahandler,protocol)
+	ipaddr_t ipaddr;
+	tcpport_t lport;
+	int (*datahandler)();
+	u8_t protocol;
+{
+    TCPSOCKET *s;
+
+
+    s = sock_listen(ipaddr,lport,datahandler,protocol);
+#ifndef SCCZ80
+    if ( s == NULL )
+	return NULL;
+#else
+    iferror {
+	return_c(s,NULL);
+    }
+#endif
+    if ( protocol == prot_TCP ) {
+	s->state = tcp_stateNONE;
+    }
+    return_nc(s);
+}
+
+void *sock_accept(u8_t protocol, tcpport_t port)
+{
+    if ( protocol == prot_TCP ) {
+	return_nc(tcp_find_connect(port));
+    }
+    return_c(EPROTONOSUPPORT,NULL);       
+}
+#endif
+
 
 void  *sock_listen(ipaddr,lport,datahandler,protocol)
 	ipaddr_t ipaddr;

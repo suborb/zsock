@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.9 2002-06-01 22:37:50 dom Exp $
+ * $Id: tcp.c,v 1.10 2002-06-08 16:26:03 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
@@ -47,41 +47,10 @@
 #ifdef Z80
 #define BUF_SIZE        1024
 #else
-#define BUF_SIZE        4096
+#define BUF_SIZE        1024
 #endif
 
 
-
-
-/*
- *	Some "useful" routines in ip.c
- */
-
-extern PsHeaderSum();
-extern TCPCSum();
-
-
-/* 
- *      Memory Functions
- *      These will have to be changed for far model
- *
- *      These functions are very dodgy to say the least and
- *      allocate memory from a string!!!
- */
-
-
-extern FreePacket();
-
-/*
- *	Routine that sets up internal daemons
- */
-
-extern RegisterServicesTCP();	/* Set up some services */
-
-/*
- *      User Servicable Routines
- *	(Don't use these..use sock_ routines instead)
- */
 
 
 
@@ -104,7 +73,7 @@ static TCPSOCKET *tcp_new_buff_socket();
 static TCPSOCKET *tcp_new_socket();
 static void tcp_signal_task(TCPSOCKET *, u8_t);
 
-
+static void tcp_parse_options(TCPSOCKET *s, tcp_header_t *tp);
 #ifdef DEBUGTCP
 #define TCPSEND(s) tcp_send(s,__LINE__)
 static void tcp_send(TCPSOCKET * s, int line);
@@ -117,6 +86,8 @@ static int tcp_output(TCPSOCKET *s,u32_t seqnum, u32_t acknum, u8_t flags, u16_t
 		      void *payload, int payload_len,
 		      void *tcpopts, int tcpopts_len);
 
+static TCPSOCKET *tcp_add_buffers(TCPSOCKET *s);
+
 
 /*
  *
@@ -125,7 +96,7 @@ static int tcp_output(TCPSOCKET *s,u32_t seqnum, u32_t acknum, u8_t flags, u16_t
 
 void tcp_init()
 {
-#ifndef SCCZ80
+#if !SCCZ80 && !CYBIKO
     sysdata.tcpport = time(NULL)%65535;
 #else
     sysdata.tcpport = 1024;
@@ -265,7 +236,9 @@ static void tcp_set_sockvj(TCPSOCKET * t)
  */
 
 
-TCPSOCKET *tcp_listen(ipaddr_t ipaddr,
+
+
+TCPSOCKET *tcp_listen(ipaddr_t ipaddr, /* ipaddr_t myaddr, */
 		      tcpport_t lport,
 		      int (*datahandler)(), u8_t type, u16_t timeout)
 {
@@ -289,6 +262,7 @@ TCPSOCKET *tcp_listen(ipaddr_t ipaddr,
 	s->timeout = 0;
     s->myport = htons(lport);
     s->hisaddr = ipaddr;
+    /* s->myaddr  = myaddr; */
     s->hisport = 0;
     s->flags = 0;
     s->unhappy = FALSE;
@@ -327,6 +301,8 @@ void tcp_close(TCPSOCKET * t)
 	s->flags |= tcp_flagFIN;
 	TCPSEND(s);
 	s->unhappy = TRUE;
+    } else {  /* If in listen etc, then make it closed */
+	s->state = tcp_stateCLOSED;
     }
 }
 
@@ -415,7 +391,7 @@ u16_t tcp_read(TCPSOCKET * s, void *dp, u16_t len, u8_t flags)
 		   s->recvoffs - s->recvread);
 	    s->recvoffs -= s->recvread;
 	    s->recvread = 0;
-	}
+	}	
     } else if (s->state == tcp_stateCLOSEWT)
 	tcp_close(s);
     return (len);
@@ -640,6 +616,20 @@ static void tcp_unthread(TCPSOCKET * ds)
     return;
 }
 
+#if 0
+TCPSOCKET *tcp_find_connect(tcpport_t *port)
+{
+    TCPSOCKET *s;
+
+    for (s = sysdata.tcpfirst; s; s = s->next) {
+	if ( s->ip_type == prot_TCP && s->state == tcp_stateESTAB && s->myport == port )
+	    return s;
+    }
+    return NULL;
+}
+#endif
+
+
 static TCPSOCKET *tcp_find_socket(ip_header_t * ip, tcp_header_t * tp)
 {
     TCPSOCKET *s;
@@ -718,9 +708,9 @@ void tcp_handler(ip_header_t * ip, u16_t length)
     if (s == NULL) {
 	for (s = sysdata.tcpfirst; s; s = s->next) {
 	    if (s->ip_type == prot_TCP && s->hisport == 0
-		&& tp->dstport == s->myport && (s->hisaddr == 0L
-						|| s->hisaddr ==
-						ip->source))
+		&& tp->dstport == s->myport 
+		&& (s->hisaddr == 0L || s->hisaddr == ip->source)
+		/* && (s->myaddr  == 0L || s->myaddr == ip->dest) */ )
 		break;
 	}
     }
@@ -818,6 +808,8 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 #endif
 	    if (s->hisaddr == ip->source) {
 		n = s;
+		if ( tcp_add_buffers(n) == NULL ) /* No room */
+		    return;
 	    } else {
 		if ((n = tcp_new_buff_socket()) == NULL) {
 		    return;
@@ -1044,7 +1036,9 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	    tcp_signal_task(s,handler_CLOSED);  /* Close it up immediately */
 	}
 	break;
-
+    case tcp_stateCLOSED:
+	tcp_rst(ip, tp);       /* Should't get a packet here, but may do if we close before shutdown */
+	return;
     }
     if (s->unhappy)
 	tcp_sendsoon(s);
@@ -1163,7 +1157,7 @@ static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, i16_t len)
     }
 
 
-    if ( s->sendoffs || ( s->unacked == 0 && s->state == tcp_stateCLOSEWT ) ) {
+    if ( s->sendoffs || len ||  ( s->unacked == 0 && s->state == tcp_stateCLOSEWT ) ) {
 	TCPSEND(s);
     }
 
@@ -1380,28 +1374,28 @@ static int tcp_output(TCPSOCKET *s,u32_t seqnum, u32_t acknum, u8_t flags, u16_t
 
 static TCPSOCKET *tcp_new_buff_socket()
 {
-    void *ptr;
-    TCPSOCKET *s;
+    TCPSOCKET *t,*s;
 
     /* Find a new socket, return NULL if we have no mem */
     if ( (s = tcp_new_socket()) == NULL)
 	return (NULL);
-/*
- * Now, set up some buffers for us..all variables are initialised by
- * tcp_new_socket();
- *
- * Rearranged order of mallocs 10/1/2000 so we can get a larger
- * free chunk for daemons (less fragging)
- */
-    if ((ptr = malloc(BUF_SIZE)) == 0) {
+    t = tcp_add_buffers(s);
+    if ( t == NULL ) 
 	free(s);
-	return (0);
+    return t;
+}
+
+
+static TCPSOCKET *tcp_add_buffers(TCPSOCKET *s)
+{
+    void *ptr;
+    if ((ptr = malloc(BUF_SIZE)) == 0) {
+	return (NULL);
     }
     s->sendbuff = ptr;
     if ((ptr = malloc(BUF_SIZE)) == 0) {
 	free(s->sendbuff);
-	free(s);
-	return (0);
+	return (NULL);
     }
     s->recvbuff = ptr;
     s->recvsize = s->sendsize = BUF_SIZE;
