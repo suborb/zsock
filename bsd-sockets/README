@@ -1,0 +1,4 @@
+This is the start of a BSD socket layer for ZSock
+
+Many things will not be supported, but basic client
+side apps should compile without issue
