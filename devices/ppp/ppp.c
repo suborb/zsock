@@ -23,9 +23,8 @@ struct pktdrive z88ppp = {
 	"ZSock PPP device by Michael Hope/Dominic Morris",
 	ppp_init,
 	ppp_send,
-	null_fn,
 	hldc_byte_out,
-	hldc_byte_in,
+	hldc_poll_in,
 	ppp_open,
 	ppp_close,
 	ppp_status
@@ -50,7 +49,6 @@ UBYTE ppp_state;
 #define PPP_LCP_DEFAULT_OPTIONS_LEN		20
 
 const UBYTE ppp_lcp_default_options[] = {
-//	0xC0, 0x21,					/* LCP DLL */
 	LCP_CONFIG_REQUEST,
 	0x01,						/* Sequence 1 */
 	0, 20,						/* Length */
@@ -69,7 +67,6 @@ const UBYTE ppp_lcp_default_options[] = {
 #define PPP_IPCP_DEFAULT_OPTIONS_LEN	6
 
 const UBYTE ppp_ipcp_default_options[] = {
-//	0x80, 0x21,					/* IPCP DLL */
 	LCP_CONFIG_REQUEST,
 	0x01,
 	0, 10,						/* Length */
@@ -87,11 +84,13 @@ UBYTE ppp_magic[] = {
     0x12, 0x34, 0x56, 0x78
 };
 
+#ifndef SCCZ80
 const char *ppp_lcp_options_names[] = {
 	"00", "MRU", "asyncmap", "auth", "quality", "magic", "06", "pcomp", "acomp"};
 
 const char *ppp_ipcp_options_names[] = {
-	"00", "01", "02", "03", "04", "05", "06"};
+	"00", "01", "02", "address", "04", "05", "06"};
+#endif
 
 void lcp_reply(UWORD dll_type, UBYTE ident, UBYTE *data, UBYTE data_length)
 {
@@ -118,9 +117,12 @@ void lcp_reply(UWORD dll_type, UBYTE ident, UBYTE *data, UBYTE data_length)
 
 int ppp_init(void)
 {
-	ppp_state = PPP_STATE_LCP;
-	hldc_init();
-	return PPP_OVERHEAD;
+#ifndef SCCZ80
+    serial_init();
+#endif
+    ppp_state = PPP_STATE_LCP;
+    hldc_init();
+    return PPP_OVERHEAD;
 }
 
 int ppp_state_machine(UBYTE *packet, UWORD len)
@@ -130,21 +132,23 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
     mlcp_header *lcp;
     mlcp_option *option;
     mlcp_options options;
+    int          tempopt;
+
+  
 
     /* Comms link up? */
     if (ppp_state == PPP_STATE_DOWN)
 	return EFAIL;
-    
     if (len!=0) {
 	/* Get the PPP DLL */
 	dll = *(packet++);
 	len--;
 	if (!(dll&1)) {
-	    dll = dll << 8 | *(packet++);
+	    dll =  ( dll << 8 ) | *(packet++) ;
 	    len--;
 	}
 #ifdef DEBUG_PPP_STATE_MACHINE
-	printf("ppp_state_machine: Recieved packet with DLL %04X.\n", dll);
+	printf("ppp_state_machine: Recieved packet with DLL %04x.\n", dll);
 #endif
 	switch (dll) {
 	case PPP_DLL_LCP:
@@ -176,11 +180,20 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 #ifdef DEBUG_PPP_STATE_MACHINE_CONFIG
 		    printf("\tlcp option type %u - %s\n", option->type, ppp_lcp_options_names[option->type]);
 #endif
+		    tempopt = hldc_get_options();
 		    switch (option->type) {
 		    case LCP_CONFIG_ASYNCMAP:
 			/* Accept it */
 			lcp_options_accept(&options, option);
 			break;
+#ifdef PAP
+		    case LCP_CONFIG_AUTH:
+			if ( option->data == htons(PPP_DLL_AUTH_PAP) ) 
+			     lcp_options_accept(&options, option);
+			else
+			    lcp_options_reject(&options, option);
+			break;
+#endif
 		    case LCP_CONFIG_MAGIC:
 			/* Accept it */
 			lcp_options_accept(&options, option);
@@ -188,12 +201,12 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 		    case LCP_CONFIG_PROTOCOL_COMPRESSION:
 			/* Accept it */
 			lcp_options_accept(&options, option);
-			hldc_set_options(hldc_get_options() | HLDC_RECV_COMPRESS_PROTO);
+			tempopt |= HLDC_RECV_COMPRESS_PROTO;
 			break;
 		    case LCP_CONFIG_ADDRESS_COMPRESSION:
 			/* Accept it */
 			lcp_options_accept(&options, option);
-			hldc_set_options(hldc_get_options() | HLDC_RECV_COMPRESS_HEADER);
+			tempopt |= HLDC_RECV_COMPRESS_HEADER;
 			break;
 		    default:
 			/* Reject */
@@ -201,16 +214,17 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 			break;
 		    }
 		}
-		/* Reply - this used to send stuff twice!*/
-		lcp_options_reply(&options, PPP_DLL_LCP);
-		
-		/* Now send my options */
-		if (ppp_state == PPP_STATE_LCP) {
-		    into = ppp_sys_alloc_pkt(PPP_LCP_DEFAULT_OPTIONS_LEN);
-		    memcpy(into, ppp_lcp_default_options, PPP_LCP_DEFAULT_OPTIONS_LEN);
-		    hldc_queue(into,PPP_LCP_DEFAULT_OPTIONS_LEN,PPP_DLL_LCP);
-		    ppp_state = PPP_STATE_LCP_SENT;
+		/* Now send my options - if reply with positives only */
+		if ( lcp_options_reply(&options,PPP_DLL_LCP) == 0 ) {
+#ifndef SCCZ80
+		    printf("Sending my default options\n");
+#endif
+		    hldc_set_options(tempopt);
 		}
+		into = ppp_sys_alloc_pkt(PPP_LCP_DEFAULT_OPTIONS_LEN);
+		memcpy(into, ppp_lcp_default_options, PPP_LCP_DEFAULT_OPTIONS_LEN);
+		hldc_queue(into,PPP_LCP_DEFAULT_OPTIONS_LEN,PPP_DLL_LCP);
+		ppp_state = PPP_STATE_LCP_SENT;	    
 		break;
 	    case LCP_CONFIG_ACK:
 #ifdef DEBUG_PPP_STATE_MACHINE
@@ -280,7 +294,7 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 		    }
 		}
 		lcp_options_reply(&options, PPP_DLL_IPCP);
-		
+
 		/* Now send my options */
 		if (ppp_state == PPP_STATE_IPCP) {
 		    into = ppp_sys_alloc_pkt(PPP_IPCP_DEFAULT_OPTIONS_LEN+4);
@@ -331,7 +345,6 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 #ifdef DEBUG_PPP_STATE_MACHINE
 	    printf("ppp_state_machine: rejecting protocol %04X\n", dll);
 #endif
-	    /* Fix up the byte order */
 	    dll = htons(dll);
 	    lcp_reply(LCP_PROTOCOL_REJECT, 1, (UBYTE *)&dll, 2);
 	}
@@ -351,11 +364,13 @@ int ppp_open(void)
 	timeout = time(NULL)+30;
 	
 	/* Wait for a packet */
-	while ((time(NULL)<timeout)&&(ppp_state!=PPP_STATE_UP)) {
-		while (((len=hldc_loop(&packet))==0)&&(time(NULL)<timeout));
+	while ( (time(NULL)<timeout) && (ppp_state!=PPP_STATE_UP)) {
+	    do {
+		len = hldc_loop(&packet);
+	    } while ( len == 0 && time(NULL) < timeout );
 
-		if (packet)
-			ppp_state_machine(packet, len);
+	    if (packet)
+		ppp_state_machine(packet, len);
 	}
 	if (ppp_state==PPP_STATE_UP)
 		return EOK;
@@ -411,7 +426,7 @@ UWORD ppp_byte_in(void **pkt)
 {
 	UBYTE	*ret, *packet;
 	UWORD	dll, len,rlen;
-	if ((len=hldc_byte_in(&packet))!=NULL) {
+	if ( (len=hldc_byte_in((void *)&packet)) != 0) {
 		rlen = len;
 		ret = packet;
 		dll = *(ret++); rlen--;
@@ -420,7 +435,7 @@ UWORD ppp_byte_in(void **pkt)
 			rlen--;
 		}
 #ifdef DEBUG_PPP_POLL
-		printf("ppp_poll: packet dll of %04X\n", dll);
+		printf("ppp_poll: packet dll of %d\n", dll);
 #endif
 		if (dll==PPP_DLL_IP) {
 			*pkt = ret;
@@ -429,12 +444,12 @@ UWORD ppp_byte_in(void **pkt)
 		else
 			ppp_state_machine(packet, len);
 	}
-	return NULL;
+	return 0;
 }
 
-int ppp_send(UWORD len)
+int ppp_send(void *pkt, UWORD len)
 {
-	return hldc_queue(len, TRUE);
+	return hldc_queue(pkt, len, PPP_DLL_IP);
 }
 
 int null_fn()

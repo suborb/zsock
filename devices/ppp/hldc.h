@@ -10,14 +10,19 @@
 
 
 struct _queue_hdr {
-    BYTE    *next;
+    void   *next;
     UWORD   len;
     UWORD   crc;
-    UWORD   dll;
-    BYTE    data;
 };
 
+
 typedef struct _queue_hdr queuehdr_t;
+
+#ifdef SCCZ80
+#define PPP_OVERHEAD                    8
+#else
+#define PPP_OVERHEAD  (sizeof(queuehdr_t) + 2)       /* +2 for dll */
+#endif
 
 /* The various HLDC options, set by the LCP negotiation stage */
 #define HLDC_SEND_COMPRESS_HEADER	1
@@ -38,6 +43,7 @@ extern UBYTE hldc_get_options(void);
 
 /* Stuff to do byte at time gunk */
 extern UWORD hldc_byte_in(void **pkt);
+extern UWORD hldc_poll_in(void **ret);
 extern void *hldc_byte_out();
 extern void *hldc_byte_send_head();
 extern void *hldc_byte_send_dll();
@@ -46,6 +52,11 @@ extern void *hldc_byte_send_body();
 extern void *hldc_byte_send_cksum();
 extern void *hldc_byte_send_flags();
 
+extern int   serial_in();
+extern       serial_out(UBYTE);
+#ifndef SCCZ80
+extern int   ser_error;
+#endif
 
 
 

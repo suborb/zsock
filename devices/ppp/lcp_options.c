@@ -65,9 +65,10 @@ int lcp_options_accept(mlcp_options *options, mlcp_option *accepted)
 
 int lcp_options_reply(mlcp_options *options, UWORD dll_type)
 {
-    UBYTE *buffer;
+    void  *buffer;
     /* DLL length plus header */
     UWORD len = sizeof(mlcp_header);
+    int   ret = 0;
 
     buffer = ppp_sys_alloc_pkt(MAX_LCP_REPLY_SIZE);
 
@@ -76,19 +77,20 @@ int lcp_options_reply(mlcp_options *options, UWORD dll_type)
     *(buffer++) = dll_type >> 8;
     *(buffer++) = dll_type & 0xFF;
 #endif
-
     /* Anything rejected? */
     if (options->reject_end != 0) {
 	/* Yip - send that */
 	((mlcp_header *)buffer)->code = LCP_CONFIG_REJECT;
 	len += options->reject_end;
 	memcpy(buffer + sizeof(mlcp_header), options->reject, options->reject_end);
+	ret = 1;
     }
     else {
 	/* No rejects - reply with the accepted data */
 	((mlcp_header *)buffer)->code = LCP_CONFIG_ACK;
 	len += options->accept_end;
 	memcpy(buffer + sizeof(mlcp_header), options->accept, options->accept_end);
+	ret = 0;
     }
 
     /* Fill in the rest of the header */
@@ -96,5 +98,6 @@ int lcp_options_reply(mlcp_options *options, UWORD dll_type)
     /* Doesnt include the DLL type */
     ((mlcp_header *)buffer)->length = htons(len);
     
-    return hldc_queue(buffer,len,dll_type);
+    hldc_queue(buffer,len,dll_type);
+    return ret;
 }

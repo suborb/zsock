@@ -5,11 +5,14 @@
 
 void *ppp_sys_alloc_pkt(int len)
 {
+    char  *ptr = tcp_malloc(len+PPP_OVERHEAD);
+    //printf("ALlocated %d bytes @ %p (%p)\n",len,ptr,ptr + PPP_OVERHEAD);
 	/* TCP alloc? */
-	return (tcp_malloc(len+PPP_OVERHEAD)+PPP_OVERHEAD);
+    return ( ptr + PPP_OVERHEAD );
 }
 
 void ppp_sys_free_pkt(void *pkt)
 {
-	tcp_free(pkt-PPP_OVERHEAD);
+    // printf("Freeing %p\n",pkt);
+    // tcp_free(pkt);
 }

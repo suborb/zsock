@@ -2,6 +2,7 @@
 
 #include "hldc.h"
 #include "ppp.h"
+#include "dll.h"
 #include "errorval.h"
 #include <stdio.h>
 #include <net/hton.h>
@@ -101,9 +102,6 @@ queuehdr_t   *cur_pkt;
 #define INITIAL_FLAG  0
 #define TRAILING_FLAG 1
 
-extern UBYTE serial_in();
-extern serial_out(UBYTE);
-UWORD hldc_byte_in(UBYTE **ret);
 
 
 /* Set the options (protocol compress etc */
@@ -147,38 +145,56 @@ UWORD hldc_fcs16_update(UWORD fcs, UBYTE *data, UWORD len)
 
 /* Insert a packet into the send queue */
 
-void hldc_queue(BYTE *pkt, UWORD len, UWORD dll)
+void hldc_queue(UBYTE *pkt, UWORD len, UWORD dll)
 {
+    UBYTE      *temp;
     WORD        crc;
     queuehdr_t *queue;
 
     queue = (queuehdr_t *)(pkt-PPP_OVERHEAD);
 
     if ( sendq_last ) {
+#ifndef SCCZ80
+	printf("Adding length %d to queue\n",len);
+#endif
 	sendq_last->next = queue;
     }
     sendq_last = queue;
 
-    queue->dll = htons(dll);
-    queue->len = len+2;
+    queue->len = len + 2;
+    temp = pkt-2;
+    temp[0] = (dll >> 8) & 0xff;
+    temp[1] = dll & 0xff;
+
+    if ( ( temp[0] & 0x01 )  ) {
+	++temp;
+	++queue->len;
+    }
+
+  
+
 
     if ( cur_pkt == 0 ) {
 	hldc_sending = 1;
 	hldc_send_state = HLDC_SEND_FLAGS;
 	hldc_send_flags = INITIAL_FLAG;
 	cur_pkt = queue;
+	length_left = cur_pkt->len;
+	cur_pos = temp;
     }
 
-#if 0
+
+
+#if 1
     if (hldc_flags&HLDC_SEND_COMPRESS_HEADER) 
-	crc = hldc_fcs16_update(HLDC_FCS_SEED, pkt, len);
+	crc = hldc_fcs16_update(HLDC_FCS_SEED, temp, len+2);
     else 
-	crc = hldc_fcs16_update(0x3DE3, pkt, len); /* Static header so don't crc */
+	crc = hldc_fcs16_update(0x3DE3,temp, len+2); /* Static header so don't crc */
 #else
 	/* We say we've got a static header, but we do need to include the dll
 	   in here as well..(
 	 */
-     crc = hldc_fcs16_update(0x3DE3,&queue->dll,len+2); /* Add in dll one */
+     crc = hldc_fcs16_update(0x3DE3,temp,len + 2); /* Add in dll one */
 #endif
 
 	
@@ -192,7 +208,7 @@ void hldc_queue(BYTE *pkt, UWORD len, UWORD dll)
 void *hldc_byte_out()
 {
 	if ( hldc_sending == 0 )
-		return 0;
+		return NULL;
 
 	switch (hldc_send_state) {
 		case HLDC_SEND_BODY:
@@ -202,13 +218,11 @@ void *hldc_byte_out()
 		case HLDC_SEND_FLAGS:
 			return (hldc_byte_send_flags());
 		case HLDC_SEND_HEAD:
-			return (hldc_byte_send_head());
-		case HLDC_SEND_DLL:
-			return (hldc_byte_send_dll());
+			return (hldc_byte_send_head());         
 		case HLDC_SEND_CKSUM:
 			return (hldc_byte_send_cksum());
 	}
-	return 0;
+	return NULL;
 }
 			
 void *hldc_byte_send_flags()
@@ -217,16 +231,16 @@ void *hldc_byte_send_flags()
 	case INITIAL_FLAG:
 		serial_out(HLDC_FLAG);
 		iferror { 
-			return 0;
+			return NULL;
 		} else {
-			hldc_send_flags=FIRST_BYTE;
+			hldc_send_flags = FIRST_BYTE;
 			hldc_send_state = HLDC_SEND_HEAD;
-			return 0;
+			return NULL;
 		}
 	case TRAILING_FLAG:
 		serial_out(HLDC_FLAG);
 		iferror {
-			return 0;	
+			return NULL;	
 		} else {
 			/* Success pick up next packet */
 			void *ptr = cur_pkt;
@@ -234,14 +248,18 @@ void *hldc_byte_send_flags()
 			if ( cur_pkt == 0 ) {
 				sendq_last = 0;
 				hldc_sending = 0;
+				return NULL;
 				return ptr;
 			}
 			length_left = cur_pkt->len;
-			cur_pos = &cur_pkt->data;
-			hldc_send_flags = INITIAL_FLAG;
+			cur_pos = (void * ) cur_pkt + PPP_OVERHEAD - 2;
+			hldc_send_flags = FIRST_BYTE;
+			hldc_send_state = HLDC_SEND_HEAD;
+			return NULL;
 			return ptr;
 		}
 	}
+	return NULL;
 }
 
 /* Send the header */
@@ -249,76 +267,54 @@ void *hldc_byte_send_head()
 {
 	if (hldc_flags&HLDC_SEND_COMPRESS_HEADER) {
 		/* skip the header */
-		hldc_send_state=HLDC_SEND_DLL;
+		hldc_send_state=HLDC_SEND_BODY;
 		hldc_send_flags=FIRST_BYTE;
-		return 0;
+		return NULL;
 	}
 	switch (hldc_send_flags) {
 	case FIRST_BYTE:
 		serial_out(HLDC_ALL_STATIONS);
 		iferror {
-			return 0;
+			return NULL;
 		} else {
 			hldc_send_flags++;
-			return 0;
+			return NULL;
 		}
 	case SECOND_BYTE:
 		if (hldc_flags&HLDC_SEND_COMPRESS_PROTO) {
 			serial_out(HLDC_PPP_CONTROL);
 			iferror {
-				return 0;
+				return NULL;
 			} else {
 				hldc_send_flags=FIRST_BYTE;
-				hldc_send_state=HLDC_SEND_DLL;
-				return 0;
+				hldc_send_state=HLDC_SEND_BODY;
+				return NULL;
 			}
 		} else {
 			serial_out(HLDC_CTRL_ESC);
 			iferror {
-				return 0;
+				return NULL;
 			} else {
 				hldc_send_flags++;
-				return 0;
+				return NULL;
 			}
 		}
 	case THIRD_BYTE:
 		serial_out(HLDC_PPP_CONTROL ^ HLDC_ESC_XOR);
 		iferror {
-			return 0;
+			return NULL;
 		} else {
 			hldc_send_flags=FIRST_BYTE;
-			hldc_send_state=HLDC_SEND_DLL;
-			return 0;
+			hldc_send_state=HLDC_SEND_BODY;
+			return NULL;
 		}
 	}
+	return NULL;
 }
 		
 		
 
-/* Send DLL - big endian */
-void *hldc_byte_send_dll()
-{
-	switch (hldc_send_flags) {
-	case FIRST_BYTE:
-		/* Stored big endian in anycase so this picks up high byte*/
-		serial_out(cur_pkt->dll);
-		iferror {
-			return 0;
-		} else {
-			hldc_send_flags++;
-			return 0;
-		}
-	case SECOND_BYTE:
-		/* Pick up low byte */
-		serial_out(htons(cur_pkt->dll));
-		iferror {
-			return 0;
-		} else {
-			hldc_send_flags=FIRST_BYTE;
-			hldc_send_state=HLDC_SEND_BODY;
-		}
-	}
-}
+
 		
 	
 void *hldc_byte_send_esc()
@@ -327,19 +323,20 @@ void *hldc_byte_send_esc()
 		case SECOND_BYTE:
 			serial_out(hldc_send_esc_char);
 			iferror {
-				return 0;
+				return NULL;
 			} else {
 				hldc_send_state=HLDC_SEND_BODY;
-				return 0;
+				return NULL;
 			}
 		case FIRST_BYTE:
 			serial_out(HLDC_CTRL_ESC);
 			iferror {
-				return 0;
+				return NULL;
 			} else {
 				hldc_send_flags++;
 			}
 	}
+	return NULL;
 }
 
 void *hldc_byte_send_cksum()
@@ -348,29 +345,30 @@ void *hldc_byte_send_cksum()
 	case FIRST_BYTE:
 		serial_out(cur_pkt->crc);
 		iferror {
-			return 0;
+			return NULL;
 		} else {
 			hldc_send_flags++;
-			return 0;
+			return NULL;
 		}
 	case SECOND_BYTE:
 		serial_out(htons(cur_pkt->crc));
 		iferror {
-			return 0;
+			return NULL;
 		} else {
 			hldc_send_state = HLDC_SEND_FLAGS;
 			hldc_send_flags = TRAILING_FLAG;
-			return 0;
+			return NULL;
 		}
 	}
+	return NULL;
 }
 
 /* This is where we actually send the body of the packet */
 
 void *hldc_byte_send_body()
 {
-	BYTE  pad;
-	BYTE  c;
+	UBYTE  pad;
+	UBYTE  c;
 
 	if (length_left == 0 ) {
 		hldc_send_state = HLDC_SEND_CKSUM;
@@ -392,14 +390,14 @@ void *hldc_byte_send_body()
 		}
 		break;
 	default:
-		if ( hldc_flags&HLDC_SEND_COMPRESS_PROTO) {
+		if ( hldc_flags&HLDC_SEND_COMPRESS_PROTO ) {
 			serial_out(c);
 			iferror {
-				return 0;
+				return NULL;
 			} else {
 				break;
 			}
-		} else if ( c<0x20 ) {
+		} else if ( c < 0x20 ) {
 			hldc_send_esc_char = c ^ HLDC_ESC_XOR;
 			hldc_send_state = HLDC_SEND_ESC;
 			serial_out(HLDC_CTRL_ESC);
@@ -411,13 +409,13 @@ void *hldc_byte_send_body()
 		} else {
 			serial_out(c);
 			iferror {
-				return 0;
+				return NULL;
 			}
 		}
 	}
 	cur_pos++;
 	length_left--;
-	return 0;
+	return NULL;
 }
 
 
@@ -429,21 +427,45 @@ void *hldc_byte_send_body()
 UWORD hldc_loop(void **ret)
 {
 	void	*value;
-	if ( value = hldc_byte_out() ) ppp_sys_free_pkt(value);
+	if ( value = hldc_byte_out() ) 
+	    ppp_sys_free_pkt(value);
 	return (hldc_byte_in(ret));
 }
 
-
-
-UWORD hldc_byte_in(UBYTE **ret)
+UWORD hldc_poll_in(void **ret)
 {
-    int got;
+    UBYTE *pkt;
+    UWORD  len;
+    UWORD  dll;
+
+    if ( len = hldc_byte_in(&pkt) ) {
+	dll = pkt[0];
+	if (!(dll&1)) {
+	    dll = dll << 8 | (pkt[1]);
+	}
+
+	if ( dll == PPP_DLL_IP ) {	
+	    *ret = pkt+1;
+	    return len-1;
+	} else {
+	    ppp_state_machine(pkt,len);
+	}
+    }
+    return 0;
+}
+	
+
+
+UWORD hldc_byte_in(void **ret)
+{
+    int   got;
     UWORD len;
 
 #ifdef DEBUG_PACKET_POLL
     printf("hldc_poll: entered.\n");
 #endif
-    got = serial_in();
+    if( (got = serial_in() ) == -1 )
+	return 0;
     switch (hldc_state) {
     case HLDC_STATE_NORM:
 	switch (got) {
@@ -493,7 +515,7 @@ UWORD hldc_byte_in(UBYTE **ret)
 	if (hldc_frame_len<2) {
 	    /* Too short - drop */
 	    hldc_frame_len = 0;
-	    return NULL;
+	    return 0;
 	}
 	
 	/* See if the header is there */
@@ -509,7 +531,7 @@ UWORD hldc_byte_in(UBYTE **ret)
 #endif
 		hldc_frame_len = 0;
 		/* CRC failed */
-		return NULL;
+		return 0;
 	    }
 	} else { /* No header */
 	    *ret = hldc_rx_start;
@@ -524,41 +546,17 @@ UWORD hldc_byte_in(UBYTE **ret)
 #endif
 		hldc_frame_len = 0;
 		/* CRC failed */
-		return NULL;
+		return 0;
 	    }
 	}
 #ifdef DEBUG_HLDC_POLL
 	printf("hldc_poll: Valid frame.\n");
 #endif
 	hldc_frame_len = 0;
+
 	return len;
     }
-    return NULL; /* flag == 0 */
+    return 0; /* flag == 0 */
 }
-
-#asm
-
-	INCLUDE	"#serintfc.def"
-
-._serial_out
-	pop	bc
-	pop	hl
-	push	hl
-	push	bc
-	ld	a,l
-        ld      l,si_pbt        ;reason code
-        ld      bc,0            ;temeout
-        call_oz(os_si)
-        ret
-
-._serial_in
-        ld      l,si_gbt
-        ld      bc,0
-        call_oz(os_si)
-	ld	l,a
-	ld	h,0
-        ret
-
-#endasm
 
 
