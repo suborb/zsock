@@ -1,11 +1,12 @@
 
-CFLAGS	 = -DNETSTAT -g -DLIBRARY
+CFLAGS	 = -DNETSTAT -g -DLIBRARY -DPPP
 INCLUDES = -I. -I../include
 LIBS	 = -lutil
 OBJS 	 = unixmain.o pbuf.o icmp.o ping.o pppset.o socket.o socket_int.o \
 	tcp.o tcp_int.o udp.o udp_dom.o generic.o loopback.o time.o \
 	setup.o ip.o net_utils.o pty.o device.o httpd.o 
 DEV     = ../devices/ppp/libppp.a
+#DEV     = ../devices/ppp/libslip.a
 
 %.o: %.c zsock.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<
