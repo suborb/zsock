@@ -33,7 +33,7 @@ struct pktdrive z88ppp = {
 /* We piggy back ontop of the peers state machine which simplifies the # states
    greatly */
 
-UBYTE ppp_state;
+u8_t ppp_state;
 
 #define PPP_STATE_DOWN		0
 #define PPP_STATE_LCP		1
@@ -48,7 +48,7 @@ UBYTE ppp_state;
 
 #define PPP_LCP_DEFAULT_OPTIONS_LEN		20
 
-const UBYTE ppp_lcp_default_options[] = {
+const u8_t ppp_lcp_default_options[] = {
 	LCP_CONFIG_REQUEST,
 	0x01,						/* Sequence 1 */
 	0, 20,						/* Length */
@@ -66,7 +66,7 @@ const UBYTE ppp_lcp_default_options[] = {
 
 #define PPP_IPCP_DEFAULT_OPTIONS_LEN	6
 
-const UBYTE ppp_ipcp_default_options[] = {
+const u8_t ppp_ipcp_default_options[] = {
 	LCP_CONFIG_REQUEST,
 	0x01,
 	0, 10,						/* Length */
@@ -75,12 +75,12 @@ const UBYTE ppp_ipcp_default_options[] = {
 };
 
 
-UBYTE ppp_ipcp_ip_address[] = {
+u8_t ppp_ipcp_ip_address[] = {
     0, 0, 0, 0
 };
 
 #define PPP_MAGIC		0x12345678
-UBYTE ppp_magic[] = {
+u8_t ppp_magic[] = {
     0x12, 0x34, 0x56, 0x78
 };
 
@@ -92,9 +92,9 @@ const char *ppp_ipcp_options_names[] = {
 	"00", "01", "02", "address", "04", "05", "06"};
 #endif
 
-void lcp_reply(UWORD dll_type, UBYTE ident, UBYTE *data, UBYTE data_length)
+void lcp_reply(u16_t dll_type, u8_t ident, u8_t *data, u8_t data_length)
 {
-    UBYTE *into;
+    u8_t *into;
     mlcp_header *lcp;
 
     into = ppp_sys_alloc_pkt(2+sizeof(mlcp_header));
@@ -125,10 +125,10 @@ int ppp_init(void)
     return PPP_OVERHEAD;
 }
 
-int ppp_state_machine(UBYTE *packet, UWORD len)
+int ppp_state_machine(u8_t *packet, u16_t len)
 {
-    UBYTE	*into;
-    UWORD	dll;
+    u8_t	*into;
+    u16_t	dll;
     mlcp_header *lcp;
     mlcp_option *option;
     mlcp_options options;
@@ -346,7 +346,7 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 	    printf("ppp_state_machine: rejecting protocol %04X\n", dll);
 #endif
 	    dll = htons(dll);
-	    lcp_reply(LCP_PROTOCOL_REJECT, 1, (UBYTE *)&dll, 2);
+	    lcp_reply(LCP_PROTOCOL_REJECT, 1, (u8_t *)&dll, 2);
 	}
     } /* len == 0 */
     return EOK;
@@ -354,8 +354,8 @@ int ppp_state_machine(UBYTE *packet, UWORD len)
 		
 int ppp_open(void)
 {
-	UBYTE *packet;
-	UWORD len;
+	u8_t *packet;
+	u16_t len;
 	time_t	timeout;
 
 #ifdef PAP
@@ -380,10 +380,10 @@ int ppp_open(void)
 int ppp_close(void)
 {
     /* Do things properly */
-    BOOL ack_received;
-    UBYTE *packet;
-    UWORD len;
-    UWORD dll;
+    bool_t ack_received;
+    u8_t *packet;
+    u16_t len;
+    u16_t dll;
     time_t	timeout;
     
     timeout = time(NULL)+30;
@@ -422,10 +422,10 @@ int ppp_close(void)
 }
 
 
-UWORD ppp_byte_in(void **pkt)
+u16_t ppp_byte_in(void **pkt)
 {
-	UBYTE	*ret, *packet;
-	UWORD	dll, len,rlen;
+	u8_t	*ret, *packet;
+	u16_t	dll, len,rlen;
 	if ( (len=hldc_byte_in((void *)&packet)) != 0) {
 		rlen = len;
 		ret = packet;
@@ -447,7 +447,7 @@ UWORD ppp_byte_in(void **pkt)
 	return 0;
 }
 
-int ppp_send(void *pkt, UWORD len)
+int ppp_send(void *pkt, u16_t len)
 {
 	return hldc_queue(pkt, len, PPP_DLL_IP);
 }

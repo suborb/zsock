@@ -29,13 +29,19 @@ int open_terminal(char *mode)
         perror("fork");
         exit(1);
     case 0:   /* Child */
+#if 1
+	snprintf(cmd,sizeof(cmd),"/usr/sbin/pppd -detach %s",slave_name);
+#else
         snprintf(cmd,sizeof(cmd),"/home/dom/bin/slattach -e -s 38400 -p %s %s\n",mode,slave_name);
+#endif
         printf("%s\n",cmd);
         system(cmd);
         exit(0);
     default: /* Parent */
 	sleep(1);
+#if 0
 	system("/sbin/ifconfig sl0 192.168.155.12 dstaddr 192.168.155.88 up\n");
+#endif
 
     }
 

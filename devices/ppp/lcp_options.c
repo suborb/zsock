@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 
-int lcp_options_init(mlcp_options *options, UBYTE *packet)
+int lcp_options_init(mlcp_options *options, u8_t *packet)
 {
     /* Cant do any error checking (sigh) */
     options->header = (mlcp_header *)packet;
@@ -63,20 +63,16 @@ int lcp_options_accept(mlcp_options *options, mlcp_option *accepted)
     return EOK;
 }
 
-int lcp_options_reply(mlcp_options *options, UWORD dll_type)
+int lcp_options_reply(mlcp_options *options, u16_t dll_type)
 {
     void  *buffer;
     /* DLL length plus header */
-    UWORD len = sizeof(mlcp_header);
+    u16_t len = sizeof(mlcp_header);
     int   ret = 0;
 
     buffer = ppp_sys_alloc_pkt(MAX_LCP_REPLY_SIZE);
 
-#if 0
-    /* Put in the appropriate header */
-    *(buffer++) = dll_type >> 8;
-    *(buffer++) = dll_type & 0xFF;
-#endif
+
     /* Anything rejected? */
     if (options->reject_end != 0) {
 	/* Yip - send that */

@@ -33,14 +33,14 @@ void pap_init()
 	auth_last_rcv_seq = 0;   /* last sequence received */
 	/* Have to read a file to get username/password */
 	strcpy(auth_username,"z88");
-	strcpy(auth_password,"z882");
+	strcpy(auth_password,"z88");
 }
 
 
 void pap_send_options()
 {
 	int    i,l,len;
-	UBYTE *into,*orig;
+	u8_t *into,*orig;
 
    	i = strlen(auth_username);
    	l = strlen(auth_password);
@@ -49,12 +49,12 @@ void pap_send_options()
 	into = orig = ppp_sys_alloc_pkt(len+4);
 	*into++ = PAP_TYPE_CONFIGURE_REQ;
 	*into++ = ++auth_last_snd_seq;
-	*into++ = (UBYTE) (len >> 8);
-	*into++ = (UBYTE) (len & 0xFF);
+	*into++ = (u8_t) (len >> 8);
+	*into++ = (u8_t) (len & 0xFF);
 	*into = i;
 	memcpy(&orig[5],auth_username,i);
 	i += 5;
-	orig[i] = (UBYTE) l;
+	orig[i] = (u8_t) l;
    	i++;  /* points to new */
 	memcpy(&orig[i],auth_password,l);
 	hldc_queue(orig,len,PPP_DLL_AUTH_PAP);

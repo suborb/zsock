@@ -1,10 +1,10 @@
-/* int send(int fd, void *buf, int len, int flags) */
+/* int recv(int fd, void *buf, int len, int flags) */
 
 
 #include "socket.h"
 
 
-int send(int fd, void *buf, int len, int flags)
+int recv(int fd, void *buf, int len, int flags)
 {
     struct __socket *sock = socket_get(fd);
     int  written,temp;

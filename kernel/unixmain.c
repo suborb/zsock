@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: unixmain.c,v 1.2 2002-06-08 16:26:03 dom Exp $
+ * $Id: unixmain.c,v 1.3 2002-10-08 19:39:58 dom Exp $
  *
  * Unix startup
  */
@@ -51,6 +51,7 @@ int main()
 {
     printf("Starting up\n");
     StackInit();
+    device->onlinefn();
 
 #ifdef SCCZ80
     printf("Free: %d Largest: %d\n",getfree(),getlarge());

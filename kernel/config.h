@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: config.h,v 1.8 2002-06-08 16:26:03 dom Exp $
+ * $Id: config.h,v 1.9 2002-10-08 19:39:57 dom Exp $
  *
  * Machine tweaking
  *
@@ -65,42 +65,6 @@
 #define HCALL Handler_Call
 #endif
 
-#ifndef Z80
-typedef unsigned char u8_t;
-typedef unsigned short u16_t;
-typedef unsigned int u32_t;
-typedef char i8_t;
-typedef short i16_t;
-typedef int i32_t;
-typedef unsigned char bool_t;
-#endif
-
-/* Remove qualifiers used by sccz80 */
-#ifndef SCCZ80
-#define __FASTCALL__
-#define __SHARED__
-#define __APPFUNC__
-#define __CALLEE__
-#define __LIB__
-#define return_c(x,y) { errno = x; return (y); }
-#define return_ncv(x)  { errno = 0; return (x); }
-#define return_nc    { errno = 0; return; }
-#define GETKEY()  fgetc(stdin)
-#define getk()    0
-#define fgets_cons(x,y) fgets(x,y,stdin);
-#define iferror if ( ser_error )
-#else
-#define return_ncv(x)  return_nc(x)
-#define return_nc return_nc
-#define GETKEY() getkey()
-  #ifdef __CPM__
-  #define getk()   0
-  #endif
-#endif
-
-#ifdef CYBIKO
-typedef int pid_t;
-#endif
 
 
 #endif

@@ -1,15 +1,15 @@
 #define FDSTDIO 1
 
-#include "hldc.h"
 #include "ppp.h"
-#include "dll.h"
-#include "errorval.h"
+
+
+
 #include <stdio.h>
 #include <net/hton.h>
 
 #define PACKET_BUF_SIZE 1024
 
-UBYTE hldc_rx_buf[PACKET_BUF_SIZE];
+u8_t hldc_rx_buf[PACKET_BUF_SIZE];
 
 #define HLDC_FLAG	0x7E
 #define HLDC_CTRL_ESC	0x7D
@@ -25,23 +25,23 @@ UBYTE hldc_rx_buf[PACKET_BUF_SIZE];
 #define HLDC_FCS_GOOD	0xF0B8		/* Final FCS value */
 
 /* hldc_flags: the various compress flags set in hldc.h */
-UBYTE hldc_flags;
+u8_t hldc_flags;
 
-UBYTE hldc_flag_count;
-UBYTE hldc_state;
-UBYTE *hldc_rx_start;
-UBYTE *hldc_rx_pos;
+u8_t hldc_flag_count;
+u8_t hldc_state;
+u8_t *hldc_rx_start;
+u8_t *hldc_rx_pos;
 
 /* Queue for sending stuff out */
 queuehdr_t *sendq_last;
 
 /* To make the computations later easier */
-UWORD hldc_frame_len;	
+u16_t hldc_frame_len;	
 
 /* This table is in assembler to get around lcc limitations on the Gameboy */
 #ifndef GAMEBOY
 /* Ripped straight from RFC 1662 */
-const UWORD hldc_fcs_table[256] = {
+const u16_t hldc_fcs_table[256] = {
 	0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
 	0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
 	0x1081, 0x0108, 0x3393, 0x221a, 0x56a5, 0x472c, 0x75b7, 0x643e,
@@ -76,7 +76,7 @@ const UWORD hldc_fcs_table[256] = {
 	0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78
 };
 #else
-extern const UWORD hldc_fcs_table[];
+extern const u16_t hldc_fcs_table[];
 #endif
 
 /* Various options for sending byte by byte */
@@ -105,9 +105,9 @@ queuehdr_t   *cur_pkt;
 
 
 /* Set the options (protocol compress etc */
-UBYTE hldc_set_options(UBYTE new_options)
+u8_t hldc_set_options(u8_t new_options)
 {
-    UBYTE ret;
+    u8_t ret;
 
     ret = hldc_flags;
     hldc_flags = new_options;
@@ -115,7 +115,7 @@ UBYTE hldc_set_options(UBYTE new_options)
     return ret;
 }
 
-UBYTE hldc_get_options(void)
+u8_t hldc_get_options(void)
 {
     return hldc_flags;
 }
@@ -136,7 +136,7 @@ int hldc_init(void)
 /*
  * Calculate a new fcs given the current fcs and the new data.
  */
-UWORD hldc_fcs16_update(UWORD fcs, UBYTE *data, UWORD len)
+u16_t hldc_fcs16_update(u16_t fcs, u8_t *data, u16_t len)
 {
 	while (len--)
 		fcs = (fcs >> 8) ^ hldc_fcs_table[(fcs ^ *(data++)) & 0xff];
@@ -145,10 +145,10 @@ UWORD hldc_fcs16_update(UWORD fcs, UBYTE *data, UWORD len)
 
 /* Insert a packet into the send queue */
 
-void hldc_queue(UBYTE *pkt, UWORD len, UWORD dll)
+void hldc_queue(u8_t *pkt, u16_t len, u16_t dll)
 {
-    UBYTE      *temp;
-    WORD        crc;
+    u8_t       *temp;
+    u16_t       crc;
     queuehdr_t *queue;
 
     queue = (queuehdr_t *)(pkt-PPP_OVERHEAD);
@@ -367,8 +367,8 @@ void *hldc_byte_send_cksum()
 
 void *hldc_byte_send_body()
 {
-	UBYTE  pad;
-	UBYTE  c;
+	u8_t  pad;
+	u8_t  c;
 
 	if (length_left == 0 ) {
 		hldc_send_state = HLDC_SEND_CKSUM;
@@ -424,7 +424,7 @@ void *hldc_byte_send_body()
    that sends and receives bytes
  */
 
-UWORD hldc_loop(void **ret)
+u16_t hldc_loop(void **ret)
 {
 	void	*value;
 	if ( value = hldc_byte_out() ) 
@@ -432,11 +432,11 @@ UWORD hldc_loop(void **ret)
 	return (hldc_byte_in(ret));
 }
 
-UWORD hldc_poll_in(void **ret)
+u16_t hldc_poll_in(void **ret)
 {
-    UBYTE *pkt;
-    UWORD  len;
-    UWORD  dll;
+    u8_t *pkt;
+    u16_t  len;
+    u16_t  dll;
 
     if ( len = hldc_byte_in(&pkt) ) {
 	dll = pkt[0];
@@ -456,10 +456,10 @@ UWORD hldc_poll_in(void **ret)
 	
 
 
-UWORD hldc_byte_in(void **ret)
+u16_t hldc_byte_in(void **ret)
 {
     int   got;
-    UWORD len;
+    u16_t len;
 
 #ifdef DEBUG_PACKET_POLL
     printf("hldc_poll: entered.\n");

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: slip_dev.c,v 1.2 2002-06-01 21:46:28 dom Exp $
+ * $Id: slip_dev.c,v 1.3 2002-10-08 19:39:56 dom Exp $
  *
  */
 
@@ -610,8 +610,10 @@ int SlipSend()
 ;       And set some counters.
 
 ._SlipInit 
+#ifdef __Z88__
           ld   l,si_sft
           call_oz os_si
+#endif
           xor  a
           ld   (_slipstat),a
           ld   (_inslipflag),a

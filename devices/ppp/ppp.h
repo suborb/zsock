@@ -2,6 +2,9 @@
 #define __OS_PPP_H
 
 #include <stdio.h>
+#include "portability.h"
+#include "dll.h"
+#include "errorval.h"
 #include "hldc.h"
 #include "types.h"
 
@@ -12,11 +15,11 @@
 
 
 struct sipcp_header {
-	UBYTE	type;
-	UBYTE	length;
+	u8_t	type;
+	u8_t	length;
 	union uipcp_header_data {
-		UWORD	compression_protocol;
-		UDWORD	addr;
+		u16_t	compression_protocol;
+		u32_t	addr;
 	} u;
 };
 
@@ -25,9 +28,9 @@ typedef struct sipcp_header mipcp_header;
 extern int ppp_init(void);
 extern int ppp_open(void);
 extern int ppp_close(void);
-extern int ppp_send(void *pkt, UWORD len);
-extern UBYTE *ppp_poll(void);
-extern UBYTE *ppp_prep(void);
+extern int ppp_send(void *pkt, u16_t len);
+extern u8_t *ppp_poll(void);
+extern u8_t *ppp_prep(void);
 
 extern void *ppp_sys_alloc_pkt(int len);
 extern void ppp_sys_free_pkt(void *pkt);

@@ -31,8 +31,9 @@
 #ifdef __Z88__
 #include <z88.h>
 #else
+/* Not running on a z88 - integrated into kernel so we need some extra stuff */
+#include "portability.h"
 #include "config.h"
-typedef unsigned char bool_t;
 int PrintVT52(char ch)
 {
 	putc(ch,stdout);

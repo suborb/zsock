@@ -31,12 +31,14 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.10 2002-06-08 16:26:03 dom Exp $
+ * $Id: tcp.c,v 1.11 2002-10-08 19:39:58 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
 
 #include "zsock.h"
+
+#define DEBUGTCP
 
 
 /* Number of bytes offset into read buffer before we copy back */

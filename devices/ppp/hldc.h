@@ -11,8 +11,8 @@
 
 struct _queue_hdr {
     void   *next;
-    UWORD   len;
-    UWORD   crc;
+    u16_t   len;
+    u16_t   crc;
 };
 
 
@@ -33,17 +33,16 @@ typedef struct _queue_hdr queuehdr_t;
 extern int hldc_init(void);
 extern int hldc_open(void);
 extern int hldc_close(void);
-extern UBYTE *hldc_prep(void);
-extern int hldc_send(UBYTE *buffer,UWORD len, BOOL can_compress);
-extern UWORD hldc_poll(void **pkt);
+extern u8_t *hldc_prep(void);
+extern u16_t hldc_poll(void **pkt);
 
 /* Set the HLDC options, getting the last options */
-extern UBYTE hldc_set_options(UBYTE new_options);
-extern UBYTE hldc_get_options(void);
+extern u8_t hldc_set_options(u8_t new_options);
+extern u8_t hldc_get_options(void);
 
 /* Stuff to do byte at time gunk */
-extern UWORD hldc_byte_in(void **pkt);
-extern UWORD hldc_poll_in(void **ret);
+extern u16_t hldc_byte_in(void **pkt);
+extern u16_t hldc_poll_in(void **ret);
 extern void *hldc_byte_out();
 extern void *hldc_byte_send_head();
 extern void *hldc_byte_send_dll();
@@ -53,7 +52,7 @@ extern void *hldc_byte_send_cksum();
 extern void *hldc_byte_send_flags();
 
 extern int   serial_in();
-extern       serial_out(UBYTE);
+extern       serial_out(u8_t);
 #ifndef SCCZ80
 extern int   ser_error;
 #endif
