@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: httpd.c,v 1.3 2002-05-13 21:47:43 dom Exp $
+ * $Id: httpd.c,v 1.4 2002-05-13 21:53:03 dom Exp $
  *
  * Dumb http server (won't work without alteration)
  */
@@ -48,26 +48,30 @@ int httpd(TCPSOCKET *, u8_t *, u16_t);
 int httpd2(TCPSOCKET *, u8_t *, u16_t);
 
 
-char head[]=  "HTTP/0.9 200 OK\n\l" \
-               "Server: Zhttpd v0.1\n\l" \
+char head[]=  "HTTP/0.9 200 OK\n\r" \
+               "Server: Zhttpd v0.1\n\r" \
                "Content-type: ";
 
 
-char txt400[]="<html><head><title>400 Bad Request</title></head>\n\l" \
-               "<body><h1>400 Bad Request.</h1>\n\l" \
-               "Your client sent an invalid request\n\l";
+char txt400[]="<html><head><title>400 Bad Request</title></head>\n\r" \
+               "<body><h1>400 Bad Request.</h1>\n\r" \
+               "Your client sent an invalid request\n\r";
 
-char txt404[]="<html><head><title>404 Not Found.</title></head>\n\l" \
-               "<body><h1>404 Not Found.</h1>\n\l" \
-               "<hr><em><b>Zhttpd v0.1 &copy;1999 D Morris</b></em>\n\l" \
-               "</body></html>\n\l";
+char txt404[]="<html><head><title>404 Not Found.</title></head>\n\r" \
+               "<body><h1>404 Not Found.</h1>\n\r" \
+               "<hr><em><b>Zhttpd v0.1 &copy;1999 D Morris</b></em>\n\r" \
+               "</body></html>\n\r";
 
 
 struct httpinfo {
-        u16_t   fd;                  /* File descriptor */
-        u16_t   read;
-        u16_t   sent;
-        u8_t    buffer[HTTPBUFSIZ];
+#ifndef FILECHEAT
+    int     fd;                  /* File descriptor */
+#else
+    FILE   *fp;
+#endif
+    u16_t   read;
+    u16_t   sent;
+    u8_t    buffer[HTTPBUFSIZ];
 };
 
 starthttpd()
@@ -81,10 +85,10 @@ int httpd(s,addr,len)
         u8_t *addr;
         u16_t len;
 {
-    char    *mimetype;
-    char    *filename;
+    u8_t    *mimetype;
+    u8_t    *filename;
     struct  httpinfo *blk;
-    char    *ptr;
+    u8_t    *ptr;
 
     if (addr && len ) {
 	s->appptr=0;
@@ -93,7 +97,7 @@ int httpd(s,addr,len)
 	    Send404(s);
 	    goto getout;
 	}
-	s->appptr = blk;  /* Link us in */
+	s->appptr = (void *)blk;  /* Link us in */
 	/* We've been sent something */
 	if (strnicmp(addr,"GET ",4) !=0) {
 	    /* Bad request */
@@ -111,7 +115,7 @@ int httpd(s,addr,len)
 	if ( *filename == '\0' || isspace(*filename) ) 
 	    filename = "index.htm";
 #ifndef FILECHEAT
-	if ( (blk->fd=open(filename,O_RDONLY,0)) == EOF ) {
+	if ( (blk->fd = open(filename,O_RDONLY,0)) == EOF ) {
 #else
 	if ( (blk->fd=fopen(filename,"r") ) == NULL ) {
 #endif
@@ -128,7 +132,7 @@ int httpd(s,addr,len)
 	}
 	SendHead(s,mimetype);
 	SendBlock(s);
-	s->datahandler = httpd2;
+	s->datahandler = (void *)httpd2;
 	return(len);
 	/* 
 	 *      Get out of here, close the conn and return bytes read 
@@ -168,7 +172,7 @@ SendBlock(TCPSOCKET *s)
 {
     struct httpinfo *blk;
         
-    blk = s->appptr;
+    blk = (void *)s->appptr;
 
     if ( blk == NULL) return;
 
@@ -192,9 +196,9 @@ SendBlock(TCPSOCKET *s)
 CloseHttpd(TCPSOCKET *s)
 {
     struct httpinfo *blk;
-    blk=s->appptr;
+    blk = (void *) s->appptr;
     if (blk) {
-	if (blk->fd) { 
+	if ( blk->fd ) { 
 #ifndef FILECHEAT
 	    close(blk->fd);
 #else
@@ -216,7 +220,7 @@ SendHead(TCPSOCKET *s,char *type)
 {
     sock_puts(s,head);
     sock_puts(s,type);
-    sock_puts(s,"\n\l\n\l");
+    sock_puts(s,"\n\r\n\r");
 }
 
 
