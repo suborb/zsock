@@ -259,7 +259,7 @@ int fgets_net(unsigned char *str, int max, int echo)
 	  fputc_cons('\n');
 	  return ptr;
       }
-      if (c == 127 ) {
+      if (c == 127 && ptr > 0 ) {
          str[--ptr] = 0;
 	 if ( echo ) {
 	     fputc_cons(8);
