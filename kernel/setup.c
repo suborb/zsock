@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: setup.c,v 1.11 2002-10-08 20:43:55 dom Exp $
+ * $Id: setup.c,v 1.12 2002-10-08 21:41:33 dom Exp $
  *
  */
 
@@ -138,7 +138,11 @@ int StackInit(int readconfig)
 #else
     sysdata.myip=defaultip;	
     sysdata.overhead = 16;
+#ifdef PPP
     device = &z88ppp;
+#else
+    device = &z88slip;
+#endif
 #endif
     sysdata.timeout = 0;
     sysdata.debug   = 0;

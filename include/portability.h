@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: portability.h,v 1.1 2002-10-08 19:40:51 dom Exp $
+ * $Id: portability.h,v 1.2 2002-10-08 21:41:31 dom Exp $
  *
  * Machine tweaking
  *
@@ -83,6 +83,8 @@ enum { FALSE = 0, TRUE };
 #ifdef CYBIKO
 typedef int pid_t;
 #endif
+
+//#include "../kernel/config.h"
 
 
 #endif

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: zsock.h,v 1.7 2002-10-08 19:39:58 dom Exp $
+ * $Id: zsock.h,v 1.8 2002-10-08 21:41:33 dom Exp $
  *
  */
 
@@ -147,8 +147,11 @@ struct sys {
 };
 
 extern struct pktdrive *device;      /* Pointer to device */
+#ifndef PPP
 extern struct pktdrive z88slip;      /* Default device */
+#else
 extern struct pktdrive z88ppp;       /* Default device */
+#endif
 extern struct sys sysdata;           /* System info */
 extern struct sysstat_s netstats;    /* Netstat stats */
 

@@ -14,8 +14,8 @@ DEV     = ../devices/ppp/libppp.a
 all:	$(OBJS)
 	$(CC) $(LDFLAGS) -o zsock $(CFLAGS) $(OBJS) $(DEV) $(LIBS)
 
-libzsock.a: $(OBJS) $(DEV)
-	ar cru libzsock.a $(OBJS) $(DEV)
+libzsock.a: $(OBJS) 
+	ar cru libzsock.a $(OBJS) 
 	ranlib libzsock.a
 
 	

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: ftp.h,v 1.5 2002-06-08 17:23:27 dom Exp $
+ * $Id: ftp.h,v 1.6 2002-10-08 21:41:29 dom Exp $
  *
  */
 
@@ -44,7 +44,7 @@
 #include <ctype.h>
 #ifdef ZSOCK
 #ifndef SCCZ80
-#include "../kernel/config.h"
+#include "portability.h"
 #define CRLF "\r\n"
 #define CR '\r'
 #define LF '\n'
@@ -108,7 +108,6 @@ extern char  *cmdargv[MAXARGS];
 
 enum { RETR = 0, STOR };
 
-enum { FALSE = 0, TRUE };
 
 
 extern tcpsock_t net_connect_ip(ipaddr_t addr, tcpport_t port);
