@@ -1,39 +1,56 @@
 /*
- * 
- *      Slip Routines for the tinytcp Small C demo
- *      (too many synonyms for little there for my liking!)
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- *      djm 18/2/99
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- *      Lot of Z80 assembler in here for speed (and I'm lazy - this
- *      stuff has already been written!!!
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  *
- *      Slightly altered from version from June 98 - dumped lots of
- *      debug stuff and also byte counting things..to be reinstated
- *      later when this thing is expanded into a full stack
+ * This file is part of the ZSock TCP/IP stack.
  *
- *      25/4/99 Altered to allow easy plugging in of another interface
- *      hazzah! - Uses a structure to do the dirty work!
+ * $Id: slip_dev.c,v 1.2 2002-06-01 21:46:28 dom Exp $
  *
- *      20/12/99 Altered so variables are in sysdata -> ROMable..
- *
- *	25/1/2000 Plug in device.. -DPLUGIN=1 
  */
 
+
+
+
 #include <sys/types.h>
+#include <net/inet.h>
+
 /* Pick up busy style */
 #include "config.h"
 
 #ifdef PLUGIN
 #define SLIPPKT _pktin
 #include <net/device.h>
-#asm
-	defc	_pktin = 9000
-#endasm
 #else
 #define SLIPPKT (_pktin)
-#include "zsock.h"
-extern void *AllocatePkt(int);
+#define PACKETSIZE 600
+#include <net/device.h>
 #endif
 
 /*
@@ -114,7 +131,6 @@ struct pktdrive z88slip = {
 #endif
         SlipInit,                       /* Initialisation Routine */
         SlipSendPkt,                    /* Add to out-queue */
-	SlipReturnPkt,			/* Address of incoming packet*/
         SlipSend,                       /* Send func */
         SlipRead,                        /* Read func */
 	SlipOnline,			/* Online */
@@ -142,7 +158,7 @@ void *SlipReturnPkt()
 #endasm
 #else
 	if (pktin) return pktin;
-	pktin = AllocatePkt(PACKETSIZE);
+	pktin = pkt_alloc(PACKETSIZE);
 	return (pktin);
 #endif
 }
@@ -613,6 +629,10 @@ int SlipSend()
 	call	_SlipReturnPkt
 #endif
           ld   (_inslippos),hl
+#ifdef __CPM__
+ld    a,1
+ld  (_online),a
+#endif
 ._SlipReInit
           ld   hl,4          ;over head for slip packets
 ; SLIP always resets itself before handing packet to stack
@@ -624,7 +644,7 @@ int SlipSend()
 ;       Confused as to what is corrupted, and what isnt!
 ;
 
-
+#ifdef __Z88__
 .sendchar
         push    hl
         ld      l,si_pbt        ;reason code
@@ -638,8 +658,40 @@ int SlipSend()
         ld      bc,0
         call_oz(os_si)
         ret
+#endif
 
+#ifdef __CPM__
+.sendchar
+	push   hl
+	ld     e,a
+	ld     d,0
+	ld     c,4
+	call   5
+	and    a
+	pop	hl
+	ret 
 
+.getchar
+	ld     c,3
+	call   5
+	ld     a,l
+	and    a
+	inc    l
+        ret    nz
+	scf
+	ret
+#endif
+	
+	
+
+/*
+ *	If we're a plugin then we have our buffer with us..
+ */
+
+#ifdef PLUGIN
+._pktin
+	defs	1500,0
+#endif
 
 
 #endasm
