@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: cmd.c,v 1.6 2002-06-08 17:19:03 dom Exp $
+ * $Id: cmd.c,v 1.7 2002-06-09 22:28:55 dom Exp $
  *
  */
 
@@ -57,12 +57,15 @@ int cmd_close(int argc, char *argv[]);
 int cmd_delete(int argc, char *argv[]);
 int cmd_hash(int argc, char *argv[]);
 int cmd_help(int argc, char *argv[]);
+int cmd_lcd(int argc, char *argv[]);
+int cmd_lls(int argc, char *argv[]);
 int cmd_binary(int argc, char *argv[]);
 int cmd_open(int argc, char *argv[]);
 int cmd_passive(int argc, char *argv[]);
 int cmd_quote(int argc, char *argv[]);
 int cmd_size(int argc, char *argv[]);
 int cmd_pwd(int argc, char *argv[]);
+int cmd_shell(int argc, char *argv[]);
 int cmd_rhelp(int argc, char *argv[]);
 int cmd_user(int argc, char *argv[]);
 /* Data commands */
@@ -71,33 +74,36 @@ int cmd_get(int argc, char *argv[]);
 int cmd_ls(int argc, char *argv[]);
 
 struct _commands commands[] = {
-	{"ascii",1,"Set ascii transfer mode",cmd_ascii},
-	{"binary",1,"Set binary transfer mode",cmd_binary},
-	{"bye",1,"Terminate ftp session and exit",cmd_quit},
-	{"cd",1,"Change remote working directory",cmd_cd},
-	{"cdup",1,"Change remote working directory to parent",cmd_cdup},
-	{"close",1,"Terminate ftp session",cmd_close},
-	{"delete",1,"Delete remote file",cmd_delete},
-	{"dir",1,"List contents of remote directory",cmd_ls},
-	{"disconnect",1,"Terminate ftp session",cmd_close},
-	{"get",1,"Receive file",cmd_get},
-	{"hash",0,"Toggle printing '#' for transferred buffers",cmd_hash},
-	{"help",0,"Print local help information",cmd_help},
-	{"image",1,"Set binary transfer mode",cmd_binary},
-	{"ls",1,"List contents of remote directory",cmd_ls},
-	{"open",0,"Connect to remote site",cmd_open},
-	{"passive",0,"Toggle passive mode",cmd_passive},
-	{"put",1,"Send one file",cmd_put},
-	{"pwd",1,"Print working directory on remote machine",cmd_pwd},
-	{"quit",0,"Terminate ftp session and exit",cmd_quit},
-	{"quote",1,"Send arbitary ftp command",cmd_quote},
-	{"recv",1,"Receive file",cmd_get},
-	{"rhelp",1,"Get help from remote server",cmd_rhelp},
-	{"send",1,"Send one file",cmd_put},
-	{"size",1,"Get size of remote file",cmd_size},
-	{"user",1,"Send new user information",cmd_user},
-	{"?",0,"Print local help informatiion",cmd_help},
-	{NULL,0,NULL,NULL}
+    {"!",0,"Send command to the shell",cmd_shell},
+    {"ascii",1,"Set ascii transfer mode",cmd_ascii},
+    {"binary",1,"Set binary transfer mode",cmd_binary},
+    {"bye",1,"Terminate ftp session and exit",cmd_quit},
+    {"cd",1,"Change remote working directory",cmd_cd},
+    {"cdup",1,"Change remote working directory to parent",cmd_cdup},
+    {"close",1,"Terminate ftp session",cmd_close},
+    {"delete",1,"Delete remote file",cmd_delete},
+    {"dir",1,"List contents of remote directory",cmd_ls},
+    {"disconnect",1,"Terminate ftp session",cmd_close},
+    {"get",1,"Receive file",cmd_get},
+    {"hash",0,"Toggle printing '#' for transferred buffers",cmd_hash},
+    {"help",0,"Print local help information",cmd_help},
+    {"image",1,"Set binary transfer mode",cmd_binary},
+    {"lcd",0,"Change local working directory",cmd_lcd},
+    {"lls",0,"List local files",cmd_lls},
+    {"ls",1,"List contents of remote directory",cmd_ls},
+    {"open",0,"Connect to remote site",cmd_open},
+    {"passive",0,"Toggle passive mode",cmd_passive},
+    {"put",1,"Send one file",cmd_put},
+    {"pwd",1,"Print working directory on remote machine",cmd_pwd},
+    {"quit",0,"Terminate ftp session and exit",cmd_quit},
+    {"quote",1,"Send arbitary ftp command",cmd_quote},
+    {"recv",1,"Receive file",cmd_get},
+    {"rhelp",1,"Get help from remote server",cmd_rhelp},
+    {"send",1,"Send one file",cmd_put},
+    {"size",1,"Get size of remote file",cmd_size},
+    {"user",1,"Send new user information",cmd_user},
+    {"?",0,"Print local help informatiion",cmd_help},
+    {NULL,0,NULL,NULL}
 	
 };
 
@@ -361,6 +367,48 @@ int cmd_size(int argc, char *argv[])
     ftp_send(buffer);
     return 0;
 }
+
+/* Local commands */
+int cmd_shell(int argc, char *argv[])
+{
+    int  i;
+    if ( argc == 1 ) {
+	printf("Cannot escape to shell\n");
+    }
+    buffer[0] = 0;
+    for ( i = 1; i < argc; i++ ) {
+	strcat(buffer,argv[i]);
+	strcat(buffer," ");
+    }
+    system(buffer);
+    printf("\n");
+}
+
+int cmd_lls(int argc, char *argv[])
+{
+    sprintf(buffer,"ls");
+    if ( argc == 2 ) {
+	strcat(buffer," ");
+	strcat(buffer,argv[1]);
+    }
+    system(buffer);
+    printf("\n");
+}
+
+int cmd_lcd(int argc, char *argv[])
+{
+    if ( argc == 2 ) {
+	sprintf(buffer,"cd %s",argv[1]);
+	system(buffer);
+    }
+    printf("Local directory is ");
+    system("pwd");
+    printf("\n");
+}
+	
+
+
+
 
 /* Data commands */
 int cmd_ls(int argc, char *argv[])
