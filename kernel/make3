@@ -1,0 +1,1 @@
+zcc -z80-verb -m -s -make-app -create-app -DINTMALLOC -O3 -nt -DNETSTAT -lnet -lz88 setup.c icmp.c ip.c udp.c tcp.c udp_dom.c config_read.c handler_call.c net_utils.c loopback.c malloc.c socket.c socket_int.c pppset.c slip_dev.c z88.c tcp_int.c main.c main2.c ping.c lowlevel2.c app.c 
