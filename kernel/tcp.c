@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.6 2002-05-14 22:41:41 dom Exp $
+ * $Id: tcp.c,v 1.7 2002-05-14 22:59:37 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
@@ -484,9 +484,10 @@ tcp_retransmit()
 #else
 void tcp_retransmit()
 {
-    TCPSOCKET *s;
-
-    for (s = sysdata.tcpfirst; s; s = s->next) {
+    TCPSOCKET *t, *s;
+    
+    for (s = sysdata.tcpfirst; s; s = t) {
+	t = s->next;
 	if (s->state == tcp_stateLISTEN)
 	    continue;
 	if (s->state == tcp_stateCLOSED) {
