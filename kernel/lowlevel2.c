@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: lowlevel2.c,v 1.5 2002-05-13 20:00:48 dom Exp $
+ * $Id: lowlevel2.c,v 1.6 2002-10-08 20:43:55 dom Exp $
  *
  * Z88 Packages
  */
@@ -46,7 +46,6 @@
 #ifdef Z88
 extern int StackInit();
 
-extern void Interrupt();
 
 
 
@@ -350,6 +349,7 @@ void _GoTCP(void)
 
 	XDEF	Interrupt
 	XDEF	Syscall
+	XREF	_Interrupt
 
 ; Interrupt Routine
 

@@ -31,10 +31,9 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: setup.c,v 1.10 2002-10-08 19:39:57 dom Exp $
+ * $Id: setup.c,v 1.11 2002-10-08 20:43:55 dom Exp $
  *
  */
-
 
 
 

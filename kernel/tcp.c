@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.11 2002-10-08 19:39:58 dom Exp $
+ * $Id: tcp.c,v 1.12 2002-10-08 20:43:55 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
@@ -192,7 +192,9 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
 #if 1
     if (lport == 0) {
 	if (get_uniqport(sysdata.tcpfirst, &sysdata.tcpport))  {
+#ifndef __Z88__
 	    printf("No unique\n");
+#endif
 	    return_c(EADDRINUSE,NULL);
 	}
 
@@ -203,7 +205,9 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
 	lport = sysdata.tcpport++;
 #endif
     if ((s = tcp_new_buff_socket()) == NULL) {
+#ifndef __Z88__
 	printf("buffer\n");
+#endif
 	return_c(ENOMEM,NULL);	/* Find a new socket */
     }
     s->state = tcp_stateSYNSENT;

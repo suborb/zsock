@@ -6,7 +6,6 @@
 #include "dll.h"
 #include "errorval.h"
 #include "hldc.h"
-#include "types.h"
 
 
 #define IPCP_IP_COMPRESS_PROTOCOL	2

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: icmp.c,v 1.7 2002-06-08 16:26:03 dom Exp $
+ * $Id: icmp.c,v 1.8 2002-10-08 20:43:55 dom Exp $
  *
  * ICMP Routines
  */
@@ -196,7 +196,6 @@ void icmp_handler(void *buf,u16_t len)
     icmp = buf+ ((ip->version&15)*4);
 
     if ( inet_cksum(icmp,len) ) { 
-	printf("ICMP cksum = %u\n",inet_cksum(icmp,len));
 #ifdef NETSTAT
 	++netstats.icmp_badck;
 #endif

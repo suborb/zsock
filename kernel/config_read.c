@@ -31,16 +31,17 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: config_read.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ * $Id: config_read.c,v 1.4 2002-10-08 20:43:55 dom Exp $
  *
  * Z88 Config Reading
  *
  */
 
 
-#define FDSTDIO   1            /* Enable old style stdio */
+
 
 #ifdef SCCZ80
+#define FDSTDIO   1            /* Enable old style stdio (fgetc = readbyte)*/
 #define FILECHEAT 1            /* Short loading routines */
 #endif
 

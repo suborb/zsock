@@ -6,7 +6,7 @@
 #ifndef __OS_HLDC_H
 #define __OS_HLDC_H
 
-#include "types.h"
+#include "portability.h"
 
 
 struct _queue_hdr {
