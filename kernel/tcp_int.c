@@ -1,38 +1,35 @@
 /*
- *      TCP Internal Daemons
+ *    TCP/UDP Internal Daemons
  *
- * 	6/12/99 (djm) Made them generic so at least echo *can*
- *	work for udp..but how to test?!?!?
+ *    $Id: tcp_int.c,v 1.3 2002-05-11 21:00:55 dom Exp $
  */
 
-#include <net/hton.h>
-#include <stdio.h>
+
 #include "zsock.h"
 
 extern char version[];
 
 
-
-/*
- *      Short routine to register services
- */
-
-int QuoteServer();
-int EchoServer();
-int FingerDaemon();
-int UDPEchoServer();
+static int     service_quote(u8_t *addr,u16_t code,TCPSOCKET *s);
+static void    service_udpecho(u8_t *addr,i16_t len,
+			       ip_header_t *ip, 
+			       udp_header_t *up,
+			       UDPSOCKET *s);
+static int     service_echo(u8_t *addr,u16_t code,TCPSOCKET *s);
+static void    service_finger(u8_t *addr,u16_t code,TCPSOCKET *s)  ;
 
 
-RegisterServicesTCP()
+
+void service_registertcp()
 {
-        tcp_listen(0L,17,QuoteServer,0,0);
-        tcp_listen(0L,7,EchoServer,0,0);
-        tcp_listen(0L,79,FingerDaemon,0,0);
+    tcp_listen(0L,17,service_quote,0,0);
+    tcp_listen(0L,7,service_echo,0,0);
+    tcp_listen(0L,79,service_finger,0,0);
 }
 
-RegisterServicesUDP()
+void service_registerudp()
 {
-	udp_open(0,7,0,UDPEchoServer,0);
+    udp_open(0,7,0,service_udpecho,0);
 }
 
 
@@ -52,18 +49,15 @@ RegisterServicesUDP()
  *      Here's the first service - a simple qotd message
  */
 
-QuoteServer(addr,code,s)
-        BYTE   *addr;
-        WORD    code;
-        TCPSOCKET *s;
+static int service_quote(u8_t *addr,u16_t code,TCPSOCKET *s)      
 {
 	//printk("Quote called %d %d %d\n",addr,code,s);
-        if ( (addr == 0) && code == handler_OPEN) {
-/* We've just been opened, so send something quick! */
-                sock_puts_i(s,version);
-                sock_close_i(s);
-        }
-        return(code);
+    if ( (addr == 0) && code == handler_OPEN) {
+	/* We've just been opened, so send something quick! */
+	sock_puts_i(s,version);
+	sock_close_i(s);
+    }
+    return(code);
 }
 
 /*
@@ -72,32 +66,28 @@ QuoteServer(addr,code,s)
  * easy function!
  */
 
-UDPEchoServer(addr,len,ip,up,s)
-	BYTE	*addr;
-	WORD	len;
-	struct ip_header *ip;
-	struct udp_header *up;
-	UDPSOCKET *s;
+static void service_udpecho(u8_t *addr,i16_t len,
+			    ip_header_t *ip,
+			    udp_header_t *up,
+			    UDPSOCKET *s)	
 {
-	UDPSOCKET *n;
+    UDPSOCKET *n;
 
-	if ( (n=udp_open(ip->source,htons(s->myport),htons(up->srcport),0,0) ) == 0 ) return;
-	EchoServer(addr,len,n);
-	udp_close(n);
+    if ( (n=udp_open(ip->source,htons(s->myport),htons(up->srcport),0,0) ) == 0 ) 
+	return;
+    service_echo(addr,len,(TCPSOCKET *)n);
+    udp_close(n);
 }
 
 
 
-EchoServer(addr,code,s)
-        BYTE   *addr;
-        WORD    code;
-        TCPSOCKET *s;
+static int service_echo(u8_t *addr,u16_t code,TCPSOCKET *s) 
 {
 	//printk("Echo called: %d type=%d port =%d %d %d\n",s,s->ip_type,htons(s->hisport),addr,code);
-        if ( addr && code ) {
-                sock_write_i(s,addr,code);
-        }
-        return(code);
+    if ( addr && code ) {
+	sock_write_i(s,addr,code);
+    }
+    return(code);
 }
                 
 
@@ -107,24 +97,23 @@ EchoServer(addr,code,s)
  *      is logged in..
  */
 
-FingerDaemon(addr,code,s)
-        BYTE   *addr;
-        WORD    code;
-        TCPSOCKET *s;
+static void service_finger(u8_t *addr,u16_t code,TCPSOCKET *s)  
 {
-        WORD    count;
+    u16_t    count;
 
-        count=code;
-        if ( addr && code ) {
-                while ( count--) {
-                        if (*addr == 13 || *addr==10 ) {
-                                sock_puts_i(s,"No one logged on\n\r");
-                                sock_close_i(s);
-                                break;
-                        } else {
-                                addr++;
-                        }
-                }
-        }
-        return(code);
+    count = code;
+    if ( addr && code ) {
+	while ( count--) {
+	    if (*addr == 13 || *addr==10 ) {
+		sock_puts_i(s,"No one logged on\n\r");
+		sock_close_i(s);
+		break;
+	    } else {
+		addr++;
+	    }
+	}
+    }
+    return(code);
 }
+
+

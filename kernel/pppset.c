@@ -12,14 +12,15 @@
  */
 
 /* sccz80 magic */
+#ifdef Z80
 #pragma -shared-file
 #ifdef OLDPACK
 #pragma -shareoffset=14
 #else
 #pragma -shareoffset=10
 #endif
+#endif
 
-#include <string.h>
 #include "zsock.h"
 
 ipaddr_t GetHostAddr(void);
@@ -31,15 +32,15 @@ size_t SetNameServers(ipaddr_t, ipaddr_t);
 
 ipaddr_t GetHostAddr(void)
 {
-	return (sysdata.myip);
+    return (sysdata.myip);
 }
 
 /* Get our current domain */
 
 u8_t *GetDomain(u8_t *buffer)
 {
-	strcpy(buffer,sysdata.domainname);
-	return (buffer);
+    strcpy(buffer,sysdata.domainname);
+    return (buffer);
 }
 
 
@@ -47,23 +48,23 @@ u8_t *GetDomain(u8_t *buffer)
 
 ipaddr_t SetHostAddr(ipaddr_t newip)
 {
-	sysdata.myip=newip;
-	return (sysdata.myip);
+    sysdata.myip = newip;
+    return (sysdata.myip);
 }
 
 /* Set our DNS servers (up to 2) */
 
 size_t SetNameServers(ipaddr_t ns1, ipaddr_t ns2)
 {
-	if ( ns1 ) {
-		sysdata.numnameserv=1;
-		sysdata.nameservers[0]=ns1;
-		if ( ns2 ) {
-			sysdata.numnameserv=2;
-			sysdata.nameservers[1]=ns2;
-		}
-		return (sysdata.numnameserv);
+    if ( ns1 ) {
+	sysdata.numnameserv = 1;
+	sysdata.nameservers[0] = ns1;
+	if ( ns2 ) {
+	    ++sysdata.numnameserv;
+	    sysdata.nameservers[1] = ns2;
 	}
-	sysdata.numnameserv=0;
-	return 0;
+	return (sysdata.numnameserv);
+    }
+    sysdata.numnameserv=0;
+    return 0;
 }

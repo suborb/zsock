@@ -1,65 +1,72 @@
 /*
+ *   Main ZSock Header File
  *
- *      Defs for Small C+ TCP stack
- *      These are standard defs such as structures..
- *
- *	This is used by the system only...
- *
- *	Do not include this yourself!!!
- *
- *	This file is a complete mess! 
- *
+ *   $Id: zsock.h,v 1.2 2002-05-11 21:00:55 dom Exp $
  */
 
-/* Version string used to check memory stuff */
 
-#define INTMALLOC 1
-#define _KERNEL 1
-#define ZSOCKVERSION $0100
-#define PACK_VERSION $0100
-#define ZSOCK_INT    $0A15
-/* Where are magic byte is! */
-#define ZSOCK0STORE $468
-#define PKG_MAX 50
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <fcntl.h>
 
-/* Socket sanity */
-
-#define SANITY 0x73CA		/* s(Z|128) */
-
+#include <net/netstats.h>
 #include <net/tcpsock.h>
 #include <net/inet.h>
+#include <net/hton.h>
+#include <net/device.h>
+#include <net/zsockerrs.h>
+#include <net/zsfiles.h>
 
+#include "nfuncs.h"
+#include "config.h"
+
+
+
+
+#define ZSOCKVERSION $0100       /* Version to check memory */
+#define PACK_VERSION $0100
+#define ZSOCK_INT    $0A15
+#define ZSOCK0STORE  $468        /* Our byte of memory in bank 0 */
+#define PKG_MAX       52
+
+#define SANITY       0x73CA	 /* Socket sanity s(Z|128) */
+
+#define INTMALLOC      1         /* Hack to avoid prototype in malloc.h */
+
+#define FLUSHLIM      128        /* Amount in TCP buffer before flush(hack) */
+#define UDPBUFSIZ     512        /* Standard size for UDP socket buffers */
+#define MAXNAMESERV     2        /* Number of name servers */
+#define MAXDOMSIZ      50        /* Max length of domain */
+
+#define MAXPINGS        5        /* Max buffer slots of ping messages */
+
+
+
+#define tcp_TIMEOUT          5   /* Various TCP timers */
+#define tcp_LONGTIMEOUT     20
+#define tcp_RETRANSMITTIME   5
+#define RETRAN_STRAT_TIME  100
+
+#define MAXVJSA	          5000   /* TCP VJ constants */
+#define MAXVJSD           1000
+
+
+/* Some moderately standard defines */
 #ifndef EOF
 #define EOF -1
 #endif
 
-#define YES 1
-#define NO  0
-
-#define WORD    unsigned int
-#define BYTE    unsigned char
-#define LWORD   unsigned long
-#define PACKETSIZE 600
-#define FLUSHLIM 128
-#define UDPBUFSIZ 512
-#define MAXNAMESERV 2
-#define MAXDOMSIZ 50
-
-#include "funcs.h"
-
-
-#define TRUE    1
-#define FALSE   0
 #ifndef NULL
-#define NULL    (void *)0
+#define NULL    ((void *)0)
 #endif
 
-/* Structure for the pkt drivers */
+enum { NO = 0, YES };
+enum { FALSE = 0, TRUE };
 
-#include <net/device.h>
-                
-/* System Data */
 
+
+/* System Data Structure */
 #pragma asm
 DEFVARS 0 {
 	version ds.w	1
@@ -70,92 +77,62 @@ DEFVARS 0 {
 #pragma endasm
 
 struct sys {
-	WORD	version;	/* Marker */
-	BYTE	page0;		/* 8192 - 16384 */
-	BYTE	page1;		/* 16384 - 32768 */
-	BYTE	page2;		/* 32768 - 49152 */
-        WORD    tcpport;
-        WORD    udpport;
-        WORD    icmpseq;
-        WORD    ipseq;
-        LWORD   myip;
-        BYTE    *pktin;
-	BYTE	debug;
-	WORD	overhead;
-        TCPSOCKET  *tcpfirst;
-        UDPSOCKET  *udpfirst;
-	WORD	mss;
-	BYTE	numnameserv;
-	LWORD	nameservers[MAXNAMESERV];
-	BYTE	domainname[MAXDOMSIZ];
+	u16_t	  version;	/* Marker */
+	u8_t	   page0;	/* 8192 - 16384 */
+	u8_t	   page1;	/* 16384 - 32768 */
+	u8_t	   page2;       /* 32768 - 49152 */
+        u16_t      tcpport;
+        u16_t      udpport;
+        u16_t      icmpseq;
+        u16_t      ipseq;
+        ipaddr_t   myip;
+        u8_t      *pktin;
+	u8_t	   debug;
+	u16_t	   overhead;
+        TCPSOCKET *tcpfirst;
+        UDPSOCKET *udpfirst;
+	u16_t	   mss;
+	u8_t	   numnameserv;
+	ipaddr_t   nameservers[MAXNAMESERV];
+	u8_t	   domainname[MAXDOMSIZ];
 	TCPSOCKET *commssocket;
-	int (*usericmp)();	/* User ICMP (internal) */
-	int	catchall;	/* Package code to catch all */
-	BYTE	counter;	/* For rexmit loop */
-	BYTE	pad;
+	int      (*usericmp)();	/* User ICMP (internal) */
+	int	   catchall;	/* Package code to catch all */
+	u8_t	   counter;	/* For rexmit loop */
+	u8_t	   pad;
 };
 
-extern struct sys sysdata;
-
-/* Stuff for netstat */
-
-#include <net/netstats.h>
-
-extern struct sysstat_s netstats;
+extern struct pktdrive *device;      /* Pointer to device */
+extern struct pktdrive z88slip;      /* Default device */
+extern struct sys sysdata;           /* System info */
+extern struct sysstat_s netstats;    /* Netstat stats */
 
 
-/* Timeout for udp daemons.. */
 
-#define TIMEOUT (-1)
-
-#define tcp_TIMEOUT 5
-#define tcp_LONGTIMEOUT 20
-#define tcp_RETRANSMITTIME 5
-#define RETRAN_STRAT_TIME 100
-
-#define MAXVJSA	5000
-#define MAXVJSD 1000
-
-
-/*
- *      Defines for datahandler
- */
-
-
+/* Message types that are sent to daemons with datahandlers */
 #define handler_CLOSED  0
 #define handler_ABORT   1
 #define handler_OPEN    2       /* internal only */
 #define handler_DATA    3       /* data waiting.. */
 
-/*
- * Number of pings to send out before barfing...
- * ..and complaining about buffer space..
- */
 
-#define MAXPINGS 5
+/* Message types */
+#define MSG_PEEK   0x02         /* Look at what the incoming data is */
 
-/*
- * Internal data representation for getxx services
- */
 
+/* Structure for getting conn info */
+struct sockinfo {
+	u8_t	  protocol;
+        ipaddr_t  local_addr;
+        tcpport_t local_port;
+        ipaddr_t  remote_addr;
+        tcpport_t remote_port;
+        u8_t      ttl;
+};
+
+/* Internal data representation for getxx services */
 struct data_entry {
 	u8_t	*name;
 	tcpport_t port;
 	u8_t	protocol;
 };
-
-/*
- * Where the config files are kept
- */
-
-#define DOMAIN_FILE     ":ram.0/resolv.cfg"
-#define HOSTNAME_FILE   ":ram.0/hostname"
-#define DEVICE_FILE     ":ram.0/netdev"
-
-/*
- * Include busy info
- */
-
-#include "config.h"
-
-#include <net/zsockerrs.h>

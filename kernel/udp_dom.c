@@ -11,11 +11,8 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <net/hton.h>
-#include <net/resolver.h>
 #include "zsock.h"
+#include <net/resolver.h>
 
 
 #define DOMAINBUFMAX    256
@@ -59,10 +56,10 @@ static void qinit( struct useek *question)
 *
 *   returns length
 */
-static packdom( BYTE *dst,BYTE *src )
+static packdom( u8_t *dst,u8_t *src )
 {
-    BYTE *p=src,*q,*savedst=dst;
-    BYTE i,dotflag=0,defflag=0,pad;
+    u8_t *p=src,*q,*savedst=dst;
+    u8_t i,dotflag=0,defflag=0,pad;
 
 
     do {                        /* copy whole string */
@@ -99,14 +96,14 @@ static packdom( BYTE *dst,BYTE *src )
  *  Unpack a compressed domain name that we have received from another
  *  host.  Handles pointers to continuation domain names -- buf is used
  *  as the base for the offset of any pointer which is present.
- *  returns the number of BYTEs at src which should be skipped over.
+ *  returns the number of u8_ts at src which should be skipped over.
  *  Includes the NULL terminator in its length count.
  */
-static int unpackdom( BYTE *dst, BYTE *src, BYTE *buf )
+static int unpackdom( u8_t *dst, u8_t *src, u8_t *buf )
 {
     int retval=0;
-    BYTE i,j;
-    BYTE *savesrc=src;
+    u8_t i,j;
+    u8_t *savesrc=src;
 
     while (*src) {
         j = *src;
@@ -142,24 +139,23 @@ static int unpackdom( BYTE *dst, BYTE *src, BYTE *buf )
  *   uses port 53
  *       num is used as identifier
  */
-static int sendom( UDPSOCKET *dom_sock, struct useek *question, BYTE *s, WORD num, BYTE dtype )
+static int sendom( UDPSOCKET *dom_sock, struct useek *question, u8_t *s, u16_t num, u8_t dtype )
 {
-    WORD i,ulen;
-    BYTE *psave,*p;
+    u16_t i,ulen;
+    u8_t *psave,*p;
 
     psave = question->x;
     i = packdom(question->x,s);
 
     p = &(question->x[i]);
-    *p++ = 0;                           /* high BYTE of qtype */
-    *p++ = dtype;                       /* number is < 256, so we know high BYTE=0 */
-    *p++ = 0;                           /* high BYTE of qclass */
+    *p++ = 0;                           /* high u8_t of qtype */
+    *p++ = dtype;                       /* number is < 256, so we know high u8_t=0 */
+    *p++ = 0;                           /* high u8_t of qclass */
     *p++ = DIN;                         /* qtype is < 256 */
 
     question->h.ident = htons(num);
     ulen = sizeof(struct dhead)+(p-psave);
-
-    udp_write( dom_sock, (BYTE*)question, ulen );
+    udp_write( dom_sock, (u8_t*)question, ulen );
     return( ulen);
 }
 
@@ -171,7 +167,7 @@ static void typea_unpacker( void *data,   /* where to put IP */
                     struct rrpart *rrp, struct useek *qp )
 {
 //   qp = qp;
-   move(rrp->rdata,data,4);   /* save IP #            */
+    memcpy(data,rrp->rdata,4);   /* Save IP number */
 }
 
 /*
@@ -195,15 +191,16 @@ static void typeptr_unpacker( void *data,
 *         from the RR.
 */
 
-static int ddextract( struct useek *qp, BYTE dtype,
+static int ddextract( struct useek *qp, u8_t dtype,
                         int (*unpacker)(), void *data )
 {
-    WORD i,j,nans,rcode;
+    u16_t i,j,nans,rcode;
     struct rrpart *rrp;
-    BYTE *p;
-    BYTE *space;
+    u8_t *p;
+    u8_t *space;
 
-    if ((space=calloc(260,1) ) == NULL) return (-1L);
+    if ((space=calloc(260,1) ) == NULL) return (-1);
+
 
     nans = htons(qp->h.ancount);              /* number of answers */
     rcode = DRCODE & htons(qp->h.flags);      /* return code for this message*/
@@ -215,7 +212,7 @@ static int ddextract( struct useek *qp, BYTE dtype,
 
     if (nans > 0 &&                                                             /* at least one answer */
     (htons(qp->h.flags) & DQR)) {                     /* response flag is set */
-    p = qp->x;                 /* where question starts */
+	p = qp->x;                 /* where question starts */
         i = unpackdom(space,p,qp);    /* unpack question name */
         /*  spec defines name then  QTYPE + QCLASS = 4 BYTEs */
         p += i+4;
@@ -226,24 +223,24 @@ static int ddextract( struct useek *qp, BYTE dtype,
  */
         while (nans-- > 0) {                                    /* look at each answer */
             i = unpackdom(space,p,qp);     /* answer name to unpack */
-            p += i;                                                             /* account for string */
+            p += i;  
+	    /* account for string */
             rrp = (struct rrpart *)p;                   /* resource record here */
  /*
   *  check things which might not align on 68000 chip one BYTE at a time
   */
-            if (*p==0 && *(p+1) == dtype &&               /* correct type and class */
-            *(p+2)==0 && *(p+3) == DIN) {
-                unpacker(data,rrp,qp);     /* get data we're looking for */
+	    if ( htons(rrp->rtype) == dtype && rrp->rclass == htons(DIN) ) {
+		unpacker(data,rrp,qp);     /* get data we're looking for */
 		free(space);
-                return(0);                                              /* successful return */
+		return(0);      
             }
-            move(&rrp->rdlength,&j,2);        /* 68000 alignment */
+	    j = rrp->rdlength;
             p += 10+htons(j);                         /* length of rest of RR */
         }
     }
 
     free(space);
-    return(-1L);                                         /* generic failed to parse */
+    return(-1);                                         /* generic failed to parse */
 }
 
 
@@ -255,13 +252,13 @@ static int ddextract( struct useek *qp, BYTE dtype,
  *   It may be a timeout, which requires another query.
  */
 
-static int udpdom(UDPSOCKET *dom_sock,BYTE *question, BYTE dtype, int (*unpacker)(), void *data )
+static int udpdom(UDPSOCKET *dom_sock,u8_t *question, u16_t dtype, int (*unpacker)(), void *data )
 {
     int i,uret;
 
-    uret = udp_read(dom_sock, question, sizeof(struct useek ));
+    uret = udp_read(dom_sock, question, sizeof(struct useek ),0);
     if (uret < 0) {
-		 return(0);    /* Fail */
+	return(0);    /* Fail */
      }
 
  /* num = htons(question->h.ident); */     /* get machine number */
@@ -301,14 +298,14 @@ static int udpdom(UDPSOCKET *dom_sock,BYTE *question, BYTE dtype, int (*unpacker
  *
  *    Returns true if we got data, false otherwise.
  */
-static int Sdomain( BYTE *mname, BYTE dtype, int (*unpacker)(),
-            void *data, int adddom, LWORD nameserver, BYTE *timedout )
+static int Sdomain( u8_t *mname, u8_t dtype, int (*unpacker)(),
+            void *data, int adddom, ipaddr_t nameserver, u8_t *timedout )
 {
     UDPSOCKET *s;
     struct useek *question;
-    LWORD timeout;
-    BYTE i;
-    BYTE *namebuff;
+    u32_t timeout;
+    u8_t i;
+    u8_t *namebuff;
     int result=0;
 
     *timedout = 1;
@@ -332,7 +329,7 @@ static int Sdomain( BYTE *mname, BYTE dtype, int (*unpacker)(),
      }
 
     /* Open a socket up */
-    if ( (s=udp_open(nameserver,0,53,0,0) ) == NULL ) {
+    if ( (s = udp_open(nameserver,0,53,NULL,0) ) == NULL ) {
 		free(namebuff);
 		free(question);
 		return 0;
@@ -344,11 +341,11 @@ static int Sdomain( BYTE *mname, BYTE dtype, int (*unpacker)(),
 
     if ( adddom ) {
         if(namebuff[strlen(namebuff)-1] != '.') { /* if no trailing dot */
-		strcat(namebuff,".");
-                strcat(namebuff,sysdata.domainname);
+	    strcat(namebuff,".");
+	    strcat(namebuff,sysdata.domainname);
         } else
             namebuff[ strlen(namebuff)-1] = 0;  /* kill trailing dot */
-     }
+    }
 
 
 
@@ -357,7 +354,7 @@ static int Sdomain( BYTE *mname, BYTE dtype, int (*unpacker)(),
      * exponentially increasing delays.
      */
 
-       for ( i = 2; i < 17; i*=2  ) {
+    for ( i = 2; i < 17; i*=2  ) {
         sendom(s,question,namebuff, 0xf001, dtype);     /* try UDP */
         timeout=set_ttimeout(i);
         do {
@@ -366,14 +363,13 @@ static int Sdomain( BYTE *mname, BYTE dtype, int (*unpacker)(),
             if (chk_timeout( timeout ))  break; 
             if ( sock_dataready_i( s )) *timedout = 0;
         } while ( *timedout );
-
+	
         if ( *timedout == 0 ) break;        /* got an answer */
     }
 
     if ( *timedout == 0 ) {
         result = udpdom(s,question,dtype, unpacker, data); /* process the received data */
-	}
-
+    }
 getout:
     udp_close( s );
     free(namebuff);
@@ -387,16 +383,16 @@ getout:
  *    unpacker to extract data, if found.
  */
 
-static int do_ns_lookup( BYTE *name, 
-                         BYTE dtype,
+static int do_ns_lookup( u8_t *name, 
+                         u8_t dtype,
                          int (*unpacker)(), 
                          void *data) 
 {
 
-    BYTE timeout[ MAXNAMESERV ];
+    u8_t timeout[ MAXNAMESERV ];
 
     int		result;
-    BYTE        count,i;
+    u8_t        count,i;
 
     result=FALSE;
     count=TRUE;
@@ -406,7 +402,7 @@ static int do_ns_lookup( BYTE *name,
     }
     rip( name );
 
-    timeout[0]=0;
+    timeout[0]=0;          /* FIXME if you change MAXNAMESERV */
     timeout[1]=0;
 //  memset(timeout,0,sizeof(timeout) );
     do {
@@ -440,14 +436,16 @@ static int do_ns_lookup( BYTE *name,
 
 ipaddr_t resolve_i( char *name)
 {
-    LWORD ipaddr;
+    ipaddr_t ipaddr;
 
-    ipaddr=inet_addr_i(name);
-    if (ipaddr) return (ipaddr);
-    if( do_ns_lookup(name, DTYPEA, typea_unpacker, &ipaddr) ) {
+    ipaddr = inet_addr_i(name);
+    if ( ipaddr ) 
+	return (ipaddr);
+    if ( do_ns_lookup(name, DTYPEA, typea_unpacker, &ipaddr) ) {
        return (ipaddr);
-	}
-    else return (0L);
+    } else {
+	return (0L);
+    }
 }
 
 
@@ -461,7 +459,7 @@ ipaddr_t resolve_i( char *name)
  * assumes: name buffer is big enough for the longest hostname
  */
 
-int reverse_addr_lookup_i( LWORD ipaddr, char *name)
+int reverse_addr_lookup_i( ipaddr_t ipaddr, char *name)
 {
    char revname[64];
 /* ipaddr has to be in little endian format for resolving to work*/

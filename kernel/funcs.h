@@ -44,3 +44,15 @@ extern TCPSOCKET __SHARED__ *tcp_listen(ipaddr_t, tcpport_t, int *, u8_t, int);
 extern UDPSOCKET __SHARED__ *udp_open(ipaddr_t, tcpport_t, tcpport_t, int *, u8_t);
 extern TCPSOCKET __SHARED__ *tcp_open(ipaddr_t, tcpport_t, tcpport_t, int *, u8_t);
 
+
+
+/* z80.c */
+extern int __FASTCALL__  tcp_dataoffset(tcp_header_t *tp);
+extern void              icmp_fill_ping(char *ptr, u16_t len);
+extern u16_t             inet_cksum_pseudo(void *buf,u8_t protocol,u16_t length);
+extern u16_t             ip_check_cksum(ip_header_t *buf);
+extern void __FASTCALL__ inet_cksum_set(ip_header_t *buf);
+extern u16_t             inet_cksum(void *buf,u16_t len);
+
+
+

@@ -15,8 +15,6 @@
 #include "zsock.h"
 
 
-u8_t *inet_ntoa_i(ipaddr_t, u8_t *);
-ipaddr_t __FASTCALL__ inet_addr_i(u8_t *cp);
 static u16_t inet_aton(u8_t *, ipaddr_t *);
 
 /*
@@ -50,15 +48,13 @@ static char sccsid[] = "@(#)inet_ntoa.c 5.5 (Berkeley) 6/1/90";
  * to base 256 d.d.d.d representation.
  */
 
-u8_t *inet_ntoa_i(in,b)
-        ipaddr_t in;
-        u8_t *b;
+u8_t *inet_ntoa_i(ipaddr_t in,char *b)      
 {
-        register u8_t *p;
+    register u8_t *p;
 
-        p = (u8_t *)&in;
-        sprintf(b, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
-        return (b);
+    p = (u8_t *)&in;
+    sprintf(b, "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
+    return (b);
 }
 
 /*
@@ -74,14 +70,14 @@ u8_t *inet_ntoa_i(in,b)
  * CHANGE: returns 0 on failure!
  */
 
-ipaddr_t __FASTCALL__ inet_addr_i(cp)
-        u8_t *cp;
+ipaddr_t __FASTCALL__ inet_addr_i(char *cp)
 {
-        ipaddr_t val;
+    ipaddr_t val;
 
-        if (inet_aton(cp, &val))
-                return (val);
-        return (0);
+    if (inet_aton(cp, &val)) {
+	return (val);
+    }
+    return (0);
 }
 
 /* 
@@ -95,61 +91,60 @@ ipaddr_t __FASTCALL__ inet_addr_i(cp)
  * 4 digits, also assumes base 10 if not returns failure
  */
 
-static u16_t inet_aton(cp, addr)
-        unsigned char *cp;
-        ipaddr_t *addr;
+static u16_t inet_aton(unsigned char *cp, ipaddr_t *addr) 
 {
-        register unsigned char c;
-        unsigned char parts[4];
-        u16_t val;
-        unsigned char *pp;
-        pp = parts;
+    register unsigned char c;
+    unsigned char parts[4];
+    unsigned int  val;
+    unsigned char *pp;
+    pp = parts;
 
-        for (;;) {
-                /*
-                 * Collect number up to ``.''. always decimal
-                 */
-                val = 0;
-                while ((c = *cp) != '\0') {
-                        if (isdigit(c)) {
-                                val = (val * 10) + (c - '0');
-                                cp++;
-                                continue;
-                        }
-                        break;
-                }
-                if (*cp == '.') {
-                        /*
-                         * Internet format:
-                         *      a.b.c.d
-                         *      a.b.c   (with c treated as 16-bits)
-                         *      a.b     (with b treated as 24 bits)
-                         */
-                        if (pp >= parts + 3 || val > 0xff)
-                                return (0);
-                        *pp++ = (char) val, cp++;
-                } else
-                        break;
+    for (;;) {
+	/*
+	 * Collect number up to ``.''. always decimal
+	 */
+	val = 0;
+	while ((c = *cp) != '\0') {
+	    if (isdigit(c)) {
+		val = (val * 10) + (c - '0');
+		cp++;
+		continue;
+	    }
+	    break;
+	}
+	if (*cp == '.') {
+	    /*
+	     * Internet format:
+	     *      a.b.c.d
+	     *      a.b.c   (with c treated as 16-bits)
+	     *      a.b     (with b treated as 24 bits)
+	     */
+	    if (pp >= parts + 3 || val > 0xff)
+		return (0);
+	    *pp++ = (char) val, cp++;
+	} else
+	    break;
         }
-        /*
-         * Check for trailing characters.
-         */
-        if ( pp != parts+3 ) return 0;
-        if (*cp && (!isascii(*cp) || !isspace(*cp)))
-                return (0);
-        if ( val > 0xff) return(0);
-        if (addr) {
-                pp=addr;
-                *pp=parts[0];
-                *(++pp)=parts[1];
-                *(++pp)=parts[2];
-                *(++pp)=parts[3];
-                *pp=(char) val;
-        }
-        return (1);
+    /*
+     * Check for trailing characters.
+     */
+    if ( pp != parts+3 ) 
+	return (0);
+    if (*cp && (!isascii(*cp) || !isspace(*cp)))
+	return (0);
+    if ( val > 0xff) return(0);
+    if (addr) {
+	pp=addr;
+	*pp=parts[0];
+	*(++pp)=parts[1];
+	*(++pp)=parts[2];
+	*(++pp)=parts[3];
+	*pp=(char) val;
+    }
+    return (1);
 }
 
-
+#if 0
 /*
  *	The getxxbyyy routines
  *
@@ -194,41 +189,49 @@ struct data_entry ip_networks[] = {
 
 
 
-
-
 tcpport_t getxxbyname(struct data_entry *type, char *name )
 {
-        struct data_entry *search;
-	search=type;
+    struct data_entry *search;
+    search=type;
 
-        while (search->name) {
-                if (!strcmp(search->name, name)) {
-                        return search->port;
-                }
-                search++;
-        }
-        return 0;
+    while (search->name) {
+	if (!strcmp(search->name, name)) {
+	    return search->port;
+	}
+	search++;
+    }
+    return 0;
 }
 
-char *getxxbyport(type, port, store_in )
-	struct data_entry *type;
-        tcpport_t port;
-        char *store_in;
+char *getxxbyport(struct data_entry *type, tcpport_t port, char *store_in )
 {
-        struct data_entry *search;
-	search=type;
+    struct data_entry *search;
+    search=type;
 
-        while (search->name) {
-                if (search->port == port) {
-                        strcpy(store_in, search->name);
-                        return store_in;
-                }
-                search++;
-        }
-        /* Didnt find - just return the value */
+    while (search->name) {
+	if (search->port == port) {
+	    strcpy(store_in, search->name);
+	    return store_in;
+	}
+	search++;
+    }
+    /* Didnt find - just return the value */
+    sprintf(store_in, "%u", port);
+    return store_in;
+}
+#else
+tcpport_t getxxbyname(struct data_entry *type, char *name )
+{
+    return 0;
+}
+
+
+char *getxxbyport(struct data_entry *type, tcpport_t port, char *store_in )
+{
         sprintf(store_in, "%u", port);
         return store_in;
 }
+#endif
 
 
 

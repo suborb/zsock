@@ -14,7 +14,6 @@ extern int StackInit();
 
 extern void Interrupt();
 
-extern struct pktdrive *device;
 
 
 /*
@@ -23,18 +22,18 @@ extern struct pktdrive *device;
 
 u8_t PageDevIn()
 {
-#pragma asm
+#asm
 	ld	hl,($4D0)
 	ld	h,0
 	ld	a,(_sysdata+page0)
 	ld	($4D0),a
 	out	($D0),a
-#pragma endasm
+#endasm
 }
 
 void PageDevOut(u8_t bind)
 {
-#pragma asm
+#asm
 	pop	de
 	pop	hl
 	push	hl
@@ -42,7 +41,7 @@ void PageDevOut(u8_t bind)
 	ld	a,l
 	ld	($4D0),a
 	out	($D0),a
-#pragma endasm
+#endasm
 }
 
 
@@ -92,7 +91,7 @@ void _DeviceOnline()
 
 void pack_ayt(void)
 {
-#pragma asm
+#asm
 	INCLUDE	"#packages.def"
 	INCLUDE "#error.def"
 	INCLUDE "#stdio.def"
@@ -176,7 +175,7 @@ void pack_ayt(void)
 	jr	z,reg_int	;good version
 	jr	nc,inst_failure	;data is higher version
 	jr	reinit		;lower version so set up again
-#pragma endasm
+#endasm
 }
 
 /*
@@ -185,7 +184,7 @@ void pack_ayt(void)
 
 void pack_bye(void)
 {
-#pragma asm
+#asm
 	call	checkarea
 	ret	c
 ; Check to see if were being used
@@ -200,7 +199,7 @@ void pack_bye(void)
 	ld	a,l
 	or	h
 	jr	z,pack_bye_ok
-;Were being used by external stuff
+;We are being used by external stuff
 	ld	a,rc_use
 	pop	hl
 	pop	de
@@ -218,7 +217,7 @@ void pack_bye(void)
 	pop	de
 	pop	bc
 	and	a
-#pragma endasm
+#endasm
 }
 
 #asm
@@ -239,7 +238,7 @@ void pack_bye(void)
 
 void pack_dat(void)
 {
-#pragma asm
+#asm
 	call	checkarea
 	ret	c
 	push	hl
@@ -254,7 +253,7 @@ void pack_dat(void)
 	ld	c,0	;mem used
 	ld	b,0	;handles open
 	and	a	;reset carry
-#pragma endasm
+#endasm
 }
 
 /*
@@ -283,33 +282,37 @@ int GetResources(void)
 
 void _GoTCP(void)
 {
-#pragma asm
+#asm
 #ifdef BUSY_VERSION
 	call	checkarea
 	ret	c
 	call	pagein	;page in segs 1 & 2
 	push	bc	;keep old bindings
+#if 0
 	ld	hl,$4D0
 	ld	a,(hl)
 	push	af	;seg 0 bindings
 	ld	a,(_sysdata+page0)
 	ld	(hl),a
 	out	($D0),a
+#endif
 	call	_Interrupt	;Main C interrupt routine
+#if 0
 	pop	af
 	ld	($4D0),a
 	out	($D0),a
+#endif
 	pop	bc
 	call	pageout
 #else
 ; On interrupt no busy code
 #endif
-#pragma endasm
+#endasm
 }
 
 
 
-#pragma asm
+#asm
 
 	XDEF	Interrupt
 	XDEF	Syscall
@@ -566,6 +569,8 @@ void _GoTCP(void)
 	defw	_sock_setttl		;48
 	defw	_sock_pair_listen	;49
 	defw	_sock_setssize
+	defw	_sock_recv		;51
+	defw	_sock_getinfo		;52
 
 ; Some External defs
 
@@ -623,5 +628,7 @@ void _GoTCP(void)
 	XREF	_sock_setttl
 	XREF	_sock_pair_listen
 	XREF	_sock_setssize
+	XREF    _sock_recv
+	XREF	_sock_getinfo
 
-#pragma endasm
+#endasm

@@ -93,9 +93,9 @@ int         more_frags;   // Set to true if this is the last frag
 
 // Should check that the packet is actually valid and do a checksum on it.
 // Assemble key
-key.proto = ip->proto;     // use proto now
+key.proto = ip->protocol;     // use proto now
 key.source=ip->source;
-key.identification = ip->identification;
+key.identification = ip->ident;
 
 // Check if we have a match
 
@@ -120,10 +120,10 @@ if (!found && active_frags == MAXFRAGS) {
 // Calc where data should go
 
 // fragfix - next line replaces... no more bitfields
-   data_start  = htons(ip->frags) << 3; //* 8
+   data_start  = htons(ip->frag) << 3; //* 8
    data_length = htons(ip->length)-in_GetHdrlenBytes(ip);
    data_end    = data_start + data_length - 1;  // Murf 94.09.16
-   more_frags = ip->frags & IP_MF;
+   more_frags = ip->frag & IP_MF;
 #ifdef ANIMATE
    printf( "Data=%d..%d", data_start, data_end );/*DEBUG STUFF*/
 #endif
@@ -151,7 +151,7 @@ if (!found)
     {
       memcpy(my_frag->data_offset + data_start,(BYTE *)ip+in_GetHdrlenBytes(ip),data_length);
       // Bracket beginning of data
-      hole = my_frag->hole_first = (hole_descr *)my_frag->data_offset;
+      hole = my_frag->hole_first = my_frag->data_offset;
       hole->start = 0;
       hole->end = data_start-1;
       if (more_frags) {
@@ -249,8 +249,8 @@ if (!found)
 	  my_frag->used = 0;
 	  active_frags--;
 	  // Redo checksum as we've changed the length in the header
-	  my_frag->ip->checksum = 0; // Zero
-	  my_frag->ip->checksum = ~ checksum( my_frag->ip, sizeof( struct ip_header ));
+	  my_frag->ip->cksum = 0; // Zero
+	  my_frag->ip->cksum = ~ checksum( my_frag->ip, sizeof( struct ip_header ));
 	  return((BYTE *)my_frag->ip - _pktipofs);
 	}
 #ifdef ANIMATE

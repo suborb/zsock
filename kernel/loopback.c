@@ -10,23 +10,21 @@
 
 #include "zsock.h"
 
-extern FreePacket();
-extern PktRcvIP();
 
 /*
  *	Variables used by this module
  */
+#ifdef Z80
+static void	*localfirst;
+static void	*locallast;
 
-int	localfirst;
-int	locallast;
 
-
-void InitLocal()
+void loopback_init()
 {
-	locallast=localfirst=0;
+    locallast = localfirst = NULL;
 }
 
-int StashLocal(void *buf, int length)
+void loopback_send(void *buf, u16_t length)
 {
 #pragma asm
         pop     de
@@ -39,8 +37,6 @@ int StashLocal(void *buf, int length)
 ;Store a local packet in the queue
 ;Entry:   hl=addy of packet
 ;         bc=packet length
-
-
 
           dec  hl
           dec  hl
@@ -74,7 +70,7 @@ int StashLocal(void *buf, int length)
 #pragma endasm
 }
 
-GetLocal()
+void loopback_recv()
 {
 #pragma asm
 	ld	hl,(_localfirst)
@@ -100,9 +96,23 @@ GetLocal()
 	push	bc
 	call	_PktRcvIP
 	pop	bc	;Leave packet on stack for _FreePacket
-	call	_FreePacket
+	call	_pkt_free
 	pop	hl
 #pragma endasm
 }
+#else
 
+void loopback_init()
+{
 
+}
+
+void loopback_send(void *buf, u16_t length)
+{
+}
+
+void loopback_recv()
+{
+
+}
+#endif

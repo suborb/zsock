@@ -7,40 +7,28 @@
  *
  *	djm 12/2/2000
  *
+ *      $Id: setup.c,v 1.3 2002-05-11 21:00:55 dom Exp $
+ *
  */
 
-#define FDSTDIO 1
 
+
+#define NETSTAT_TXT
 #include "zsock.h"
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdio.h>
+#include <stdlib.h>   /* We need the HEAP macros */
 
 
 
-extern struct pktdrive z88slip;
-
-
-/*
- * Because the Memory Handling of the Small C crt0 is a bit bad ATM
- * we're using a static variable as our heap - it whacks the size of
- * the file up, but it means it is kept safe over preemption - and we
- * can't use an external pointer extern char k(address) because we
- * don't know how large the program is going to be - this really is
- * safer all round..
- */
-
+/* We use an array as a MALLOC heap */
 #define HPSIZE 15000
 extern int process;
 /* This gubbins must be in first file.. */
 #pragma -zorg=32768
 #pragma -reqpag=1
 #pragma -defvars=16384
+#pragma output userheapvar=1
 
-/* 
- * Structure for system data (put first so sits @16384
- */
+
 
 struct sys sysdata;
 
@@ -50,177 +38,155 @@ struct sysstat_s netstats;
 
 HEAPSIZE(HPSIZE)
 
-static char version[]="$VER:ZSock v2.21 (c) 2001 D.Morris\n\r";
-
-extern BYTE *allocatepkt();
-extern PktDrvRegister();
-extern TCPInit();
-extern tcp_retransmit();
-extern void PktRcvIP(void *,WORD);
-
-extern ipaddr_t defaultip;
-
-extern GetFree();
-extern telnet();
-
-#pragma asm
-._defaultip       defb 10,0,0,88
-#pragma endasm
+static char version[]="$VER:ZSock v2.3 (c) 2002 D.Morris\n\r";
 
 
-/*
- * Where out device driver is
- */
-
-struct pktdrive *device;
+static ipaddr_t       defaultip = IP_ADDR(192,168,155,88);
 
 
-/*
- * Function prototypes
- */
-
-void main();
-int loop();
-int StdLoop1();
-int StackInit();
-void MemExit(void);
-void MyExit(int);
-void ApplicationQuit();
-int CheckDriver();
-
-/*
- *	Code called on the interrupt
- *
- *	Shudder...
- */
-
-Interrupt()
+void Interrupt()
 {
-	WORD	bind;
-	BYTE	*pkt;
-	WORD	value;
-	bind=PageDevIn();
-/* Read in some bytes and handle the packet */
-	if (value=device->readfn(&pkt) ) {
-		PktRcvIP(pkt,value);    
-	}
-/* Send out some bytes... */
-        if (value=(int)device->sendfn()) FreePacket((void *)value);
-	PageDevOut(bind);
-/*
- *      Handling TCP timeouts here, this is unbelievable kludgy, but
- *      there you go!
- */
-        --sysdata.counter;
-        if (sysdata.counter==0) {
-/* 
- *      Counter has expired, call retransmit
- */
-                tcp_retransmit();
-                CheckUDPtimeouts();
-                sysdata.counter=50;
-        }
-/* Get the local stuff */
-	GetLocal();
+    u16_t	bind;
+    void       *pkt;
+    int         value;
+
+    bind = PageDevIn();
+    /* Read in some bytes and handle the packet */
+    if (value = device->readfn(&pkt) ) {
+	PktRcvIP(pkt,value);    
+    }
+    /* Send out some bytes... */
+    if ( value = device->sendfn() ) 
+	pkt_free((void *)value);
+    PageDevOut(bind);
+    /* Kludgey TCP timeout */
+    if ( --sysdata.counter == 0) {  
+	tcp_retransmit();
+	udp_check_timeouts();
+	sysdata.counter = 50;
+    }
+    loopback_recv();
 }
 
 
-/*
- *      Set up the stack, form the malloc pool
- *	Read in config (depending on flag)
- *	Start up the servics
- */
 
-int StackInit(int flag)
+int StackInit(int readconfig)
 {
     char    name[18];
     ipaddr_t addr;
     int	i;
-    heapinit(HPSIZE);
-    sysdata.usericmp=0;
-    sysdata.mss = 512;
-    if (flag) {
-	ReadDomConfig();	/* Read in domain info */
-	sysdata.myip=defaultip;	/* Default 10.0.0.88 */
 
-        if (gethostname_i(name,sizeof(name)) ==0  ) {
-                if (gethostaddr_i(name,sizeof(name)) == 0 ) {
-                        addr=inet_addr_i(name);
+    heapinit(HPSIZE);
+    sysdata.usericmp = 0;
+    sysdata.mss = 512;
+    if ( readconfig ) {
+	config_dns();            /* Read in DNS information */
+	sysdata.myip=defaultip;	
+
+        if ( config_hostname(name,sizeof(name)) == 0  ) {
+                if ( config_hostaddr(name,sizeof(name)) == 0 ) {
+                        addr = inet_addr_i(name);
                         if (addr) 
-                                sysdata.myip=addr;
+                                sysdata.myip = addr;
                 }
         } 
-/* Now try to find a device..read from config file */
-	ReadDevConfig();
+	config_device();        /* Find device file info */
     }
-    sysdata.counter=50;
-    sysdata.debug=0;
-    if (AttachDriver(device) == NULL ) {
-		return(1);
-    }
-    TCPInit();
-    UDPInit();
+    sysdata.counter = 50;
+    sysdata.debug   = 0;
+    if ( device_attach(device) == FALSE )
+	return (1);  
+    loopback_init();   /* Setup loopback interface */
+    tcp_init();        /* Initialise TCP layer */
+    udp_init();        /* Initialise UDP layer */
     return(0);
 }
 
+
+
+
 /*
- * Attach a packet driver to the system
- *
- * Returns true/false on success
+ *	User config..to enter in hostname and nameserver
  */
 
-int AttachDriver(struct pktdrive *ptr)
+UserConfig()
 {
-	int	bind;
-	bind=PageDevIn();
-	if (CheckDriver(ptr)==NULL) {
-		PageDevOut(bind);
-		return 0;
+	char	buffer[40];
+	ipaddr_t addr;
+	int	j,i;
+	printf("IP addr of the z88: ");
+	fgets_cons(buffer,19);
+	if ( (addr=inet_addr_i(buffer) ) ) {
+		sysdata.myip=addr;
+	} else {
+		printf("\nConfig aborted..");
+		return;
 	}
-/* Call initialisation routine */
-        sysdata.overhead = ptr->initfunc();
-/* Matched the magic, so it must be okay! */
-/* Now get an input buffer */
-    	sysdata.pktin=(ptr->packetfn)();
-	if (sysdata.pktin == 0 ) {
-		return 0;
+
+	printf("\nDefault domainname: ");
+	fgets_cons(sysdata.domainname,MAXDOMSIZ-1);
+	j=0;
+	for (i=0; i<MAXNAMESERV;i++) {
+		printf("\nIP addr of nameserver #%d: ",i+1);
+		fgets_cons(buffer,19);
+		if ( (addr=inet_addr_i(buffer)) ) {
+			sysdata.nameservers[i]=addr;
+			++j;
+		} else break;
 	}
-/* Set up our loopback queues */
-	InitLocal();
-	PageDevOut(bind);
-        return(1);
+	putchar('\n');
+	printf("\nFilename of network device driver: ");
+	fgets_cons(buffer,39);
+	putchar('\n');
+	if (strlen(buffer) ) {
+	    device = device_insert(buffer);
+	}
+	StackInit(FALSE);
+	if (j == 0) 
+	    return;
+
+	sysdata.numnameserv = j;
 }
 
-/*
- *	Read in a device driver to DRIVER_ADDR (8192)
- *
- *	Returns length read or 0 for no file etc..
- */
-
-int LoadDriver(char *name)
+do_netstat()
 {
-	int	bind;
-	int	len;
-	int	fd;
+    static char *st[]=
+    { "LISTEN","SYNSENT","SYNREC","ESTAB","ESTABCL",
+      "FINWT1","FINWT2","CLOSEWT","CLOSING","LASTACK",
+      "TIMEWT","CLOSEMSL","CLOSED" };  
+    int	time;
+    TCPSOCKET *s;
 
-	if	((fd=open(name,O_RDONLY,0)) == EOF) return NULL;
-/* No fstat in z88 lib yet, so read as much as we can */
-	bind=PageDevIn();
-	len=read(fd,DRIVER_ADDR,8192);
-	close(fd);
-	PageDevOut(bind);
-	return(len);
+    printf("Free: %d Largest: %d debug %d Conns are:\n",getfree(),getlarge(),sysdata.debug);
+
+    printf("Lport\tDport\tFlags\tTimeou\t Dataq State\n");
+    for ( s = sysdata.tcpfirst ; s ; s = s->next ) { 
+	time=s->timeout-current_time();
+	if (time<0) time=0;
+	printf("%u\t%u\t%u\t%u\t%u\t%u\t%s\n",htons(s->myport),htons(s->hisport),s->flags,time,s->recvoffs,s->sendoffs,st[s->state]);
+    }
 }
 
-/*
- *	Check To See If Driver Is OK
- *
- *	Returns true/false
- */
 
-int CheckDriver(struct pktdrive *ptr)
+figures()
 {
-        if (strcmp(ptr->magic,"ZS0PKTDRV") ) return(0);
-	return (1);
+    int	*ap=netstats;
+    unsigned char	*text;
+    int	i;
+
+    for (i=0;i<NETSTAT_NUM;++i) {
+	text=netstat_txt[i];
+	if (*text =='l') {
+	    printf(text+1,*((long *)ap));
+	    ++ap;
+	} else {
+	    printf(text,*ap);
+	}
+	putchar('\n');
+	++ap;       	
+	if (i && i%6 == 0 ) {
+	    getkey();
+	}
+    }
 }
 

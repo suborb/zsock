@@ -17,7 +17,6 @@
 
 #include "zsock.h"
 
-LWORD current();
 
 #define OZDAY 100*60*60*24
 
@@ -33,14 +32,14 @@ LWORD current();
  *	oz units
  */
 
-LWORD set_ttimeout(int secs)
+u32_t set_ttimeout(int secs)
 {
-	return (current()+((WORD)secs*100));
+	return (current_time()+((u32_t)(secs*100)));
 }
 
-LWORD set_timeout(int tensms)
+u32_t set_timeout(int tensms)
 {
-	return (current()+(WORD)tensms);
+	return (current_time()+tensms);
 }
 
 
@@ -48,7 +47,7 @@ LWORD set_timeout(int tensms)
  * Get the current time
  */
 
-LWORD current()
+u32_t current_time()
 {
 #pragma asm
 	ld	de,1
@@ -66,11 +65,11 @@ LWORD current()
  * Return TRUE for timeout
  */
 
-int chk_timeout(LWORD time)
+int chk_timeout(u32_t time)
 {
-	LWORD now;
+	u32_t now;
 
-	now=current();
+	now=current_time();
 
 /*
  * 	Bit of fudge time
@@ -89,12 +88,12 @@ int chk_timeout(LWORD time)
  * Set various TCP timeout times 
  */
 
-SetTIMEOUTtime(TCPSOCKET *s)
+void SetTIMEOUTtime(TCPSOCKET *s)
 {	
 	s->timeout=set_ttimeout(tcp_TIMEOUT);
 }
 
-SetLONGtimeout(TCPSOCKET *s)
+void SetLONGtimeout(TCPSOCKET *s)
 {
 	s->timeout=set_ttimeout(tcp_LONGTIMEOUT);
 }
@@ -105,7 +104,7 @@ SetLONGtimeout(TCPSOCKET *s)
  *      obtained from time of day, so a little bit cheaty!
  */
 
-LWORD GetSeqNum()
+u32_t GetSeqNum()
 {
 #pragma asm
           ld   de,1

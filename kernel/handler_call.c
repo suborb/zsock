@@ -2,7 +2,7 @@
  *	Handler call...
  *
  *	djm 11/2/2000
- *	Very z88dk Specific...
+ *	Very z88dk (z80/z88) Specific...
  *
  *	This simply requires that we tag the socket onto
  *	the end of the call to the handler. (i.e. order
@@ -10,10 +10,13 @@
  *	internal we try to tranparently call, for package
  *	calls we just add a bit of stack offset
  *	(+2)
+ *
+ *      Compatibility for Z80 machines added (flat address space)
  */
  
 #include "zsock.h"
 
+#ifdef Z80
 /*
  *	This function obviously has more arguments but 
  *	we only care abt the last one...This is abt
@@ -32,10 +35,12 @@ int Handler_Call(s)
 	push	bc
 	ld	hl,7	;offset to handler_type
 	add	hl,de
+#ifdef Z88
 	ld	a,(hl)
 	inc	hl	;go to handler address
 	and	a
 	jr	nz,do_ext_call
+#endif
 ; Internal Call - socket already in de
 	ld	a,(hl)
 	inc	hl
@@ -44,6 +49,7 @@ int Handler_Call(s)
 	jp	(hl)
 ; External package call additional offset of 2.
 .do_ext_call
+#ifdef Z88
 	ld	c,(hl)
 	inc	hl
 	ld	b,(hl)
@@ -58,7 +64,7 @@ int Handler_Call(s)
 ; a zero return value to carry on so..
 	ld	hl,0	;safe value
 .ext_callok
-	ret
+#endif
 #pragma endasm
 }
 
@@ -75,9 +81,14 @@ PackageCall(rout)
 	pop	iy	;Packet ID to call
 	push	iy
 	push	hl
+#ifdef Z88
 	jr	ext_call_in
+#else
+	jp      (iy)
+#endif
 #pragma endasm
 }
 
+#endif
 	
 

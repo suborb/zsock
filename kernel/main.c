@@ -7,6 +7,8 @@
  *	are called from this don't necessarily...
  *
  *	djm 18/2/2000
+ *
+ *      $Id: main.c,v 1.3 2002-05-11 21:00:55 dom Exp $
  */
 
 
@@ -18,8 +20,8 @@
 
 int	process;
 
-extern char bigwindow[];
-void RedrawScreen();
+extern char   bigwindow[];
+static void   RedrawScreen();
 
 int main()
 {
@@ -37,7 +39,7 @@ int main()
 		
 	printf("ZSock Waiting For Your Command\n");
 	while(1) {
-		BUSYLOOP();
+		BUSYINT();
 		getk();
 	}
 }
@@ -45,51 +47,49 @@ int main()
 
 void __APPFUNC__ handlecmds(int cmd)
 {
-
-
-	if (cmd >= 0x87 ) {
+    if (cmd >= 0x87 ) {
 /* On/offline options */
-		switch (cmd) {
-			case 0x87:
-				_DeviceOffline(HANGUP);
-				printf("Hungup\n");
-				break;
-			case 0x88:
-				_DeviceOffline(NOHANGUP);
-				printf("Offline\n");
-				break;
-			case 0x89:
-				_DeviceOnline();
-				printf("Turned device online\n");
-		}
-	} else {
-		if (process) { 
-			putchar(7);	/* Beep */
-			return; 
-		} else {
-			process=cmd;
-			switch (cmd) {
-				case 0x81:
-					Ping();
-					break;
-				case 0x82:
-					do_netstat();
-					break;
-				case 0x83:
-					UserConfig();
-					break;
-				case 0x84:
-					exit(0);
-					break;
-				case 0x85:
-					report();
-					break;
-				case 0x86:
-					figures();
-			}
-			process=0;
-		}
+	switch (cmd) {
+	case 0x87:
+	    _DeviceOffline(HANGUP);
+	    printf("Hungup\n");
+	    break;
+	case 0x88:
+	    _DeviceOffline(NOHANGUP);
+	    printf("Offline\n");
+	    break;
+	case 0x89:
+	    _DeviceOnline();
+	    printf("Turned device online\n");
 	}
+    } else {
+	if (process) { 
+	    putchar(7);	/* Beep */
+	    return; 
+	} else {
+	    process=cmd;
+	    switch (cmd) {
+	    case 0x81:
+		Ping();
+		break;
+	    case 0x82:
+		do_netstat();
+		break;
+	    case 0x83:
+		UserConfig();
+		break;
+	    case 0x84:
+		exit(0);
+		break;
+	    case 0x85:
+		device_report();
+		break;
+	    case 0x86:
+		figures();
+	    }
+	    process=0;
+	}
+    }
 }
 
 

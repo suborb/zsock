@@ -19,9 +19,7 @@
  *
  */
 
-#include <strings.h>
-#include <stdio.h>
-#include <net/zsockerrs.h>
+
 #include "zsock.h"
 
 /* Some sccz80 magic */
@@ -35,7 +33,7 @@
 
 
 extern ipaddr_t resolve_i(char *);
-extern int reverse_addr_lookup_i(LWORD, char *);
+extern int reverse_addr_lookup_i(ipaddr_t, char *);
 
 /*
  *      Write a stream of bytes to a socket
@@ -89,19 +87,21 @@ void  sock_flush(s)
  *      Read from a socket
  */
 
+int  sock_recv(s,dp,len,flags)
+        TCPSOCKET       *s;
+        u8_t            *dp;
+        u16_t           len;
+	u8_t		flags;
+{
+	return (sock_read_i(s,dp,len,flags));
+}
+
 int  sock_read(s,dp,len)
         TCPSOCKET       *s;
         u8_t            *dp;
         u16_t           len;
 {
-	switch (s->ip_type) {
-		case prot_UDP:
-                	return_nc(udp_read(s,dp,len));
-		case prot_TCP:
-		case CONN_CLOSED:
-                	return_nc(tcp_read(s,dp,len));
-	}
-	return_c EPROTONOSUPPORT;
+	return (sock_read_i(s,dp,len,0));
 }
 
 /*
@@ -125,7 +125,7 @@ void  sock_abort(t)
 	TCPSOCKET *s=t;
 	switch (s->ip_type) {
 		case prot_UDP:
-                	udp_close(s);
+                	udp_close((UDPSOCKET *)s);
 			break;
 		case prot_TCP:
 		case CONN_CLOSED:
@@ -281,17 +281,17 @@ int  sock_chktimeout(t)
  * 	User timeout routines
  */
 
-LWORD user_settimeout(int secs)
+u32_t user_settimeout(int secs)
 {
 	return_nc (set_ttimeout(secs));
 }
 
-LWORD user_setctimeout(int csecs)
+u32_t user_setctimeout(int csecs)
 {
 	return_nc (set_timeout(csecs));
 }
 
-int user_chktimeout(LWORD time)
+int user_chktimeout(u32_t time)
 {
 	return_nc (chk_timeout(time));
 }
@@ -328,7 +328,7 @@ ipaddr_t  resolve(char *name)
 	return_nc (resolve_i(name));
 }
 
-int  reverse_addr_lookup(LWORD addr, char *name)
+int  reverse_addr_lookup(ipaddr_t addr, char *name)
 {
 	return_nc (reverse_addr_lookup_i(addr,name));
 }
@@ -360,14 +360,22 @@ extern u8_t *getxxbyport(struct data_entry *, tcpport_t, u8_t *);
 
 u8_t getprotobyname(char *name)
 {
+#if 0
 	return_nc (getxxbyname(ip_protocols,name));
+#else
+	return_nc ( getxxbyname(NULL,name));
+#endif
 }
 
 u8_t *getprotobynumber(port,store)
 	tcpport_t port;
 	u8_t	*store;
 {
+#if 0
 	return_nc (getxxbyport(ip_protocols,port,store));
+#else
+	return_nc (getxxbyport(NULL,port,store));
+#endif
 }
 
 /*
@@ -376,14 +384,22 @@ u8_t *getprotobynumber(port,store)
 
 u8_t	getnetbyname(char *name)
 {
+#if 0
 	return_nc (getxxbyname(ip_networks,name));
+#else
+	return_nc (getxxbyname(NULL,name));
+#endif
 }
 
 u8_t *getnetbynumber(port,store)
 	tcpport_t port;
 	u8_t	*store;
 {
+#if 0
 	return_nc (getxxbyport(ip_networks,port,store));
+#else
+	return_nc (getxxbyport(NULL,port,store));
+#endif
 }
 
 /*
@@ -392,18 +408,27 @@ u8_t *getnetbynumber(port,store)
 
 tcpport_t getservbyname(char *name)
 {
+#if 0
 	return_nc (getxxbyname(ip_services,name));
+#else
+	return_nc (getxxbyname(NULL,name));
+#endif
 }
 
 u8_t *getservbyport(port,store)
 	tcpport_t port;
 	u8_t	*store;
 {
+#if 0
 	return_nc (getxxbyport(ip_services,port,store));
+#else
+	return_nc (getxxbyport(NULL,port,store));
+#endif
 }
 
 u8_t getservprotobyname(char *name )
 {
+#if 0
         struct data_entry *search=ip_services;
 
         while (search->name) {
@@ -412,12 +437,14 @@ u8_t getservprotobyname(char *name )
                 }
                 search++;
         }
+#endif
         return_nc 0;
 }
 
 u8_t getservprotobyport(port )
         tcpport_t port;
 {
+#if 0
         struct data_entry *search=ip_services;
 
         while (search->name) {
@@ -426,6 +453,7 @@ u8_t getservprotobyport(port )
                 }
                 search++;
         }
+#endif
 	return_nc 0;
 }
 
@@ -433,8 +461,9 @@ size_t GetNetStats(buf,len)
 	u8_t *buf;
 	u16_t len;
 {
-	if (len == 0 ) len=sizeof(struct sysstat_s);
-	if (buf) Move(netstats,buf,len);
+	if (len == 0 ) 
+	    len = sizeof(struct sysstat_s);
+	if (buf) memcpy(buf,netstats,len);
 	return_nc len;
 }
 
@@ -480,8 +509,7 @@ void *tcp_calloc(size_t num, size_t sz)
 int tcp_RegCatchAll(func)
 	int func;
 {
-	int func2;
-	func2=sysdata.catchall;
+	int func2=sysdata.catchall;
 	sysdata.catchall=func;
 	return_nc(func2);
 }
@@ -666,4 +694,26 @@ void sock_setttl(s,ttl)
 		case prot_TCP:
 			s->ttl=ttl;
 	}
+}
+
+int sock_getinfo(TCPSOCKET *t, struct sockinfo *sock)
+{
+	TCPSOCKET *s = t;
+	switch (s->ip_type ) {
+		case prot_UDP:
+		case prot_TCP:
+			sock->protocol = s->ip_type;
+			sock->ttl = s->ttl;
+#if 1
+			memcpy(&sock->local_addr,&s->myaddr,12);
+#else
+			sock->local_addr = s->myaddr;
+			sock->remote_addr = s->hisaddr;
+			sock->remote_port = s->hisport;
+			sock->local_port = s->myport;
+			sock->remote_port = s->hisport;
+#endif
+			return 0;
+	}
+	return_c -1;
 }
