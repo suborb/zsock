@@ -16,10 +16,12 @@ int main(int argc, char *argv[])
     while ( 1 ) {
 	printf("> ");
 	fflush(stdout);
+	fflush(stdin);
 	fgets(buf,sizeof(buf),stdin);
 	makeargs(buf);
 	if ( cmdargc )
-	    exec_cmd(cmdargc,cmdargv);	    
+	    exec_cmd(cmdargc,cmdargv);	
+	buf[0] = 0;
     }
 }
 

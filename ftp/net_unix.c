@@ -135,7 +135,7 @@ int net_listen()
     if (listen(listen_sock, 1) == -1)
 	return -1;
 
-    return 0;
+    return listen_sock;
 }
 
 

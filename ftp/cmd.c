@@ -170,9 +170,15 @@ int cmd_pwd(int argc, char *argv[])
 
 int cmd_rhelp(int argc, char *argv[])
 {
-    if ( argc != 1 )
+    if ( argc > 2 )
 	return -1;
-    ftp_send("HELP\r\n");
+    strcpy(buffer,"HELP");
+    if ( argc == 2 ) {
+	strcat(buffer," ");
+	strcat(buffer,argv[1]);
+    }
+    strcat(buffer,"\r\n");
+    ftp_send(buffer);
     return 0;
 }
 
@@ -259,7 +265,6 @@ int cmd_user(int argc, char *argv[])
     sprintf(buffer,"USER %s\r\n",user);
     ret = ftp_send(buffer);
     if ( ret != 331 ) {
-	printf("Bad returncode\n");
 	return 0;
     }
     printf("Password: "); fflush(stdout);
