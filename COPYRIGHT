@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002 Dominic Morris
+ * Copyright (c) 1999-2002 Dominic Morris
  * All rights reserved. 
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -31,6 +31,6 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: COPYRIGHT,v 1.2 2002-05-13 19:48:00 dom Exp $
+ * $Id: COPYRIGHT,v 1.3 2002-05-13 20:00:34 dom Exp $
  *
  */
