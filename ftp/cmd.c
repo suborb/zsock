@@ -19,6 +19,7 @@ int cmd_cd(int argc, char *argv[]);
 int cmd_cdup(int argc, char *argv[]);
 int cmd_close(int argc, char *argv[]);
 int cmd_delete(int argc, char *argv[]);
+int cmd_hash(int argc, char *argv[]);
 int cmd_help(int argc, char *argv[]);
 int cmd_binary(int argc, char *argv[]);
 int cmd_open(int argc, char *argv[]);
@@ -44,7 +45,8 @@ struct _commands commands[] = {
 	{"dir",1,"List contents of remote directory",cmd_ls},
 	{"disconnect",1,"Terminate ftp session",cmd_close},
 	{"get",1,"Receive file",cmd_get},
-	{"help",0,"Print local help informatiion",cmd_help},
+	{"hash",0,"Toggle printing '#' for transferred buffers",cmd_hash},
+	{"help",0,"Print local help information",cmd_help},
 	{"image",1,"Set binary transfer mode",cmd_binary},
 	{"ls",1,"List contents of remote directory",cmd_ls},
 	{"open",0,"Connect to remote site",cmd_open},
@@ -102,10 +104,21 @@ int cmd_passive(int argc, char *argv[])
 	return -1;
 
     passive ^= 1;
-    printf("Passive mode is %s\n", passive ? "ON" : "OFF");
+    printf("Passive mode %s.\n", passive ? "on" : "off");
 #else
     printf("Passive mode is not supported yet\n");
 #endif
+    return 0;
+}
+
+int cmd_hash(int argc, char *argv[])
+{
+    if ( argc != 1 )
+	return -1;
+
+    hash ^= 1;
+    printf("Hash printing is %s.\n", hash ? "on (256 bytes/hash mark)" : "off");
+
     return 0;
 }
 

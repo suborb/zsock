@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #ifdef SCCZ80
+#include <net/socket.h>
 #include <net/inet.h>
 #include <net/hton.h>
 #else
@@ -39,6 +40,8 @@ extern	int connected;
 
 extern tcpsock_t ftpdata_fd;
 extern tcpsock_t ftpctrl_fd;
+
+extern int  hash;
 
 
 extern int    cmdargc;

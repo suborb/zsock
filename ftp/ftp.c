@@ -5,6 +5,8 @@ char input_buffer[160];
 
 char file_buffer[1024];
 
+int  hash;
+
 int ftp_returncode()
 {
     char  result[5];
@@ -114,27 +116,44 @@ int ftp_data(char *buf, int direction, FILE *fp)
 /* These return vals are wrong */
 int sendfile(FILE *fp)
 {
-    int           s;
-    unsigned long total = 0UL;
+    int           s,i;
+    unsigned long c = 0,total = 0UL;
 
     while ( ( s = fread(file_buffer,1,sizeof(file_buffer),fp) ) != 0  ) {
 	net_write(ftpdata_fd,file_buffer,s);
 	total += s;
+	if ( hash && total/ 256 > c ) {
+	    i = total / 256 - c;
+	    c = total/256;
+	    while ( i-- )
+		printf("#"); 
+	    fflush(stdout);
+	}
     }
+    printf("\n");
     return total;
 }
 		
 
 int recvfile(FILE *fp)
 {
-    int           s;
-    unsigned long total = 0UL;
+    int           s,i;
+    unsigned long c = 0,total = 0UL;
     while ( ( s = net_read(ftpdata_fd,file_buffer,sizeof(file_buffer)) ) != -1 ) {
 	if ( s == 0 )
 	    break;
         fwrite(file_buffer,1,s,fp);
 	total += s;
+	if ( hash && fp != stdout &&  total/ 256 > c ) {
+	    i = total / 256 - c;
+	    c = total / 256;
+	    while ( i-- )
+		printf("#"); 
+	    fflush(stdout);
+	}
     }
+    if ( hash && fp != stdout )
+	printf("\n");
     return total;
 	
 }

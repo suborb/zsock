@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     }
 
     while ( 1 ) {
-	printf("> ");
+	printf("ftp> ");
 	fflush(stdout);
 	fflush(stdin);
 	fgets(buf,sizeof(buf),stdin);
