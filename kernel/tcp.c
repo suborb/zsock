@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.8 2002-06-01 21:43:18 dom Exp $
+ * $Id: tcp.c,v 1.9 2002-06-01 22:37:50 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
@@ -49,6 +49,7 @@
 #else
 #define BUF_SIZE        4096
 #endif
+
 
 
 
@@ -124,7 +125,12 @@ static int tcp_output(TCPSOCKET *s,u32_t seqnum, u32_t acknum, u8_t flags, u16_t
 
 void tcp_init()
 {
+#ifndef SCCZ80
+    sysdata.tcpport = time(NULL)%65535;
+#else
     sysdata.tcpport = 1024;
+#endif
+
     sysdata.tcpfirst = NULL;
     service_registertcp();
 #ifndef SCCZ80
@@ -237,6 +243,7 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
     s->unhappy = TRUE;
     s->datahandler = datahandler;
     s->handlertype = type;
+    s->window = s->sendsize;
     tcp_set_sockvj(s);
     TCPSEND(s);
     s->rtt_time = set_ttimeout(1);	/* 1 second */
@@ -369,10 +376,8 @@ u16_t tcp_write(TCPSOCKET * s, void *dp, u16_t len)
     if (len) {
 	memcpy(s->sendbuff + s->sendoffs, dp, len);
 	s->sendoffs += len;
-#if 0
 	if (s->sendoffs >= FLUSHLIM)
 	    tcp_flush(s);
-#endif
     }
     return (len);
 }
