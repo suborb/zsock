@@ -1,71 +1,41 @@
 /*
- * Z88 TCP Rewritten in C to Make it Slightly More Legible!
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- * This code owes a debt to Waterloo TCP, just to let ya know!
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- * djm 26/1/99
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  *
- * djm 22/2/99 - Can finally accept an incoming connection, but we 
- *               send something which fubarrs up the miggy, so we get
- *               "flooded" with rsts.
+ * This file is part of the ZSock TCP/IP stack.
  *
- * djm 23/2/99 - Incorporated changes from ostcp to CLOSING & FINWT1
- *               and tcp_processdata
+ * $Id: tcp.c,v 1.5 2002-05-13 20:00:48 dom Exp $
  *
- * djm 24/2/99 - New socket flag s->sent - set by tcp_write so that
- *               listen (eg quote) doesn't send the same data twice
- *               though, I'll be damned if I can get it to close
- *               properly!!!
- *
- * djm 26/2/99 - Got the thing working after incorporating a few
- *               ideas for Waterloo TCP, though it transpires that
- *               the original works as well (was fubarred due to
- *               mistakes in lib functions!)
- *
- * djm 24/4/99 - Fixing a few things, such as notifying handler
- *               of conn open and closed, stopped tcp_write flushing
- *               for every write - this is okay for daemons since they
- *               are called by kernel, which does do flush
- *
- * djm 28/4/99 - Implementing receive buffers and tidying up program
- *               to remove the dependency on datahandler calls
- *
- * djm 7/12/99 - Starting to implement all complex gunk..implemented
- *               working (at least httpd can now send files) however
- *               qotd has stopped working :( at least till some
- *               data has been sent from remote site...weird
- *               Solved this problem by forcing a send...
- *
- * djm 9/12/99 - Killed annoying us=FINWT2 them=LASTACK bug
- *               sorted timers out..so they time(!) Datasize
- *               sending working now..
- *
- * djm 21/12/99- Rearrange socket to coincide with UDP layout,
- *		 s->sent flag removed from socket (unused)
- *
- * djm 10/1/2000-Fixed major hang for the daemons in tcp_send
- *		 thing we were basically getting a -ve size
- *		 for the buffer and it was blowing up from
- *		 there..
- *
- * djm 12/1/2000-Made things work for user listen processes eg
- *		 for ftp-data we check for match and don't clone
- *		 the socket on connect
- *
- * djm 9/2/2000 -Added call to handle daemons which are packages
- *    11/2/2000  Instead of s->datahandler() we use HCALL
- *		 This means a new variable in SOCKET * to tell
- *		 us what type of routine - could dump this by
- *		 having internal daemons use packages but that
- *		 is just silly!
- *
- * PROBLEMS:
- *
- * 6/1/2000	Increasing the size of the TCP window causes
- *		an almighty barf in the telnet client when
- *		we get to the prompt stage...dunno what's
- *		happening really...
+ * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
+
 
 
 #include "zsock.h"
@@ -126,7 +96,7 @@ static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, u16_t len);
 static void tcp_rst(ip_header_t * hisip, tcp_header_t * oldtp);
 static int min(int b, int a);
 
-static TCPSOCKET *tcp_new_buff_socket();
+static TCPSOCKET *tcp_new_buff_socket(u8_t flag);
 static TCPSOCKET *tcp_new_socket();
 static void tcp_signal_task(TCPSOCKET *, u8_t);
 
@@ -233,7 +203,7 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
 #if 1
     if (lport == 0) {
 	if (get_uniqport(&sysdata.tcpfirst, &sysdata.tcpport))
-	    return_c EADDRINUSE;
+	    return_c(EADDRINUSE,NULL);
 
 	lport = sysdata.tcpport;
     }
@@ -242,7 +212,7 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
 	lport = sysdata.tcpport++;
 #endif
     if ((s = tcp_new_buff_socket(YES)) == 0)
-	return_c(ENOMEM);	/* Find a new socket */
+	return_c(ENOMEM,NULL);	/* Find a new socket */
     s->state = tcp_stateSYNSENT;
     SetLONGtimeout(s);
     s->hisaddr = ipdest;
@@ -256,7 +226,7 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
     tcp_set_sockvj(s);
     TCPSEND(s);
     s->rtt_time = set_ttimeout(1);	/* 1 second */
-    return_nc(s);
+    return_ncv(s);
 }
 
 static void tcp_set_sockvj(TCPSOCKET * s)
@@ -281,14 +251,14 @@ TCPSOCKET *tcp_listen(ipaddr_t ipaddr,
 
     if (lport == 0) {
 	if (get_uniqport(&sysdata.tcpfirst, &sysdata.tcpport))
-	    return_c EADDRINUSE;
+	    return_c(EADDRINUSE,NULL);
 
 	lport = sysdata.tcpport;
     } else if (CheckPort(sysdata.tcpfirst, lport))
-	return_c EADDRINUSE;
+	return_c(EADDRINUSE,NULL);
 
     if ((s = tcp_new_socket()) == 0)
-	return_c(ENOMEM);
+	return_c(ENOMEM,NULL);
     s->state = tcp_stateLISTEN;
     if (timeout)
 	s->timeout = set_ttimeout(timeout);
@@ -301,7 +271,7 @@ TCPSOCKET *tcp_listen(ipaddr_t ipaddr,
     s->unhappy = FALSE;
     s->datahandler = datahandler;
     s->handlertype = type;
-    return_nc(s);
+    return_ncv(s);
 }
 
 
@@ -709,7 +679,7 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 
 
     /* Get the start of the TCP header */
-    tp = (u8_t *)ip + (ip->version & 15) * 4;
+    tp = (tcp_header_t *)( (u8_t *)ip + (ip->version & 15) * 4);
 
     /* Calculate length of TCP data */
     len = ntohs(ip->length) - (ip->version & 15) * 4;
@@ -1169,7 +1139,7 @@ static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, u16_t len)
     diff = s->acknum - tp->seqnum;
     if (tp->flags & tcp_flagSYN)
 	--diff;
-    dp = tp;
+    dp = (void *)tp;
 
     x = ( tp->offset & 0xf0 ) >> 2;  /* Obtain the length of the TCP header */
     dp += x;
@@ -1292,7 +1262,7 @@ static void tcp_send(TCPSOCKET * s)
 	       senddata, s->flags, s->state, line);
 
 #endif
-	dp = &pkt->maxsegopt;
+	dp = (void *)&pkt->maxsegopt;
 
 	pkt->ip.length =
 	    sizeof(struct ip_header) + sizeof(struct tcp_header);
@@ -1414,7 +1384,7 @@ static void tcp_rst(ip_header_t *hisip, tcp_header_t *oldtp)
 /*
  * Do the TCP Checksum, length is always going to be 20 (TCP header)
  */
-    pkt->tcp.cksum = inet_cksum_pseudo(pkt->ip, pkt->tcp, prot_TCP, sizeof(struct tcp_header));
+    pkt->tcp.cksum = inet_cksum_pseudo(&pkt->ip, &pkt->tcp, prot_TCP, sizeof(struct tcp_header));
 #ifdef NETSTAT
     ++netstats.tcp_rstsent;
 #endif

@@ -1,15 +1,40 @@
 /*
- *	Routines used by device drivers to set generic config
- *	and other things..
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- *	This file contains routines to:
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- *	- Set/read the IP address
- *	- Read the default domain
- *	- Set the Nameservers
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  *
- *	djm 29/1/2000
+ * This file is part of the ZSock TCP/IP stack.
+ *
+ * $Id: pppset.c,v 1.4 2002-05-13 20:00:48 dom Exp $
+ *
  */
+
 
 /* sccz80 magic */
 #ifdef SCCZ80
@@ -23,10 +48,7 @@
 
 #include "zsock.h"
 
-ipaddr_t GetHostAddr(void);
-u8_t *GetDomain(char *);
-ipaddr_t SetHostAddr(ipaddr_t);
-size_t SetNameServers(ipaddr_t, ipaddr_t);
+
 
 /* Get Our Current IP address */
 

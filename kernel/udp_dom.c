@@ -1,13 +1,39 @@
 /*
- *      DNS Handler
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- *      Stolen from Waterloo TCP which stole it from NCSA telnet
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- *      Hacked abt a lot..
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  *
- *      djm 8/12/99
+ * This file is part of the ZSock TCP/IP stack.
  *
- *	djm 7/1/2000 Sorted a few problems out (opt rules *sigh*)
+ * $Id: udp_dom.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ *
+ * Inspired/stolen from Waterloo/NCSA telnet
  */
 
 
@@ -35,13 +61,14 @@ char *rip(char *);
  * and also speeds thing up a little bit
  */
 
+#ifdef SCCZ80
 static void qinit( struct useek *question2)
 {
    struct useek *question=question2;
-/* was..
+#else
 static void qinit( struct useek *question)
 {
-*/
+#endif
     question->h.flags = htons(DRD);
     question->h.qdcount = htons(1);
     question->h.ancount = 0;
@@ -179,7 +206,7 @@ static void typea_unpacker( void *data,   /* where to put IP */
 static void typeptr_unpacker( void *data,
                      struct rrpart *rrp, struct useek *qp )
 {
-   unpackdom(data,rrp->rdata,qp);
+   unpackdom(data,rrp->rdata,(u8_t *)qp);
 }
 
 /*********************************************************************/
@@ -213,7 +240,7 @@ static int ddextract( struct useek *qp, u8_t dtype,
     if (nans > 0 &&                                                             /* at least one answer */
     (htons(qp->h.flags) & DQR)) {                     /* response flag is set */
 	p = qp->x;                 /* where question starts */
-        i = unpackdom(space,p,qp);    /* unpack question name */
+        i = unpackdom(space,p,(u8_t *)qp);    /* unpack question name */
         /*  spec defines name then  QTYPE + QCLASS = 4 BYTEs */
         p += i+4;
 /*
@@ -222,7 +249,7 @@ static int ddextract( struct useek *qp, u8_t dtype,
  *  we want to support later.
  */
         while (nans-- > 0) {                                    /* look at each answer */
-            i = unpackdom(space,p,qp);     /* answer name to unpack */
+            i = unpackdom(space,p,(u8_t *)qp);     /* answer name to unpack */
             p += i;  
 	    /* account for string */
             rrp = (struct rrpart *)p;                   /* resource record here */
@@ -252,7 +279,7 @@ static int ddextract( struct useek *qp, u8_t dtype,
  *   It may be a timeout, which requires another query.
  */
 
-static int udpdom(UDPSOCKET *dom_sock,u8_t *question, u16_t dtype, int (*unpacker)(), void *data )
+static int udpdom(UDPSOCKET *dom_sock,struct useek *question, u16_t dtype, int (*unpacker)(), void *data )
 {
     int i,uret;
 
@@ -361,10 +388,12 @@ static int Sdomain( u8_t *mname, u8_t dtype, int (*unpacker)(),
 	    BUSYINT();
             if ( getk() == 27) { result=-1; goto getout; } /* ^C abort resolver*/
             if (chk_timeout( timeout ))  break; 
-            if ( sock_dataready_i( s )) *timedout = 0;
+            if ( sock_dataready_i( (TCPSOCKET *)s )) 
+		*timedout = 0;
         } while ( *timedout );
 	
-        if ( *timedout == 0 ) break;        /* got an answer */
+        if ( *timedout == 0 )
+	    break;        /* got an answer */
     }
 
     if ( *timedout == 0 ) {

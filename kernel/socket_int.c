@@ -1,17 +1,44 @@
 /*
- *      Socket (internal) Routines For ZSock
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- * 	These are routines that are called by code
- *	in ZSock itself when using unified SOCKET
- *	appearance.
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- *	The package code..just calls these when necessary...
- *	Only a few here (mostly used by daemons)
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
+ *
+ * This file is part of the ZSock TCP/IP stack.
+ *
+ * $Id: socket_int.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ *
+ * Routines used by the internal daemons
  */
 
 
-#include "zsock.h"
 
+#include "zsock.h"
 
 
 
@@ -23,11 +50,11 @@ int  sock_write_i(TCPSOCKET *s,u8_t *dp,u16_t len)
 {
     switch (s->ip_type) {
     case prot_UDP:
-	return (udp_write((UDPSOCKET *)s,dp,len));
+	return_ncv(udp_write((UDPSOCKET *)s,dp,len));
     case prot_TCP:
-	return (tcp_write(s,dp,len));
+	return_ncv(tcp_write(s,dp,len));
     }
-    return_c EPROTONOSUPPORT;
+    return_c(EPROTONOSUPPORT,-1);
 }
 
 
@@ -62,9 +89,9 @@ int  sock_dataready_i(TCPSOCKET *s)
     case prot_UDP:
     case prot_TCP:
     case CONN_CLOSED:
-	return_nc s->recvoffs-s->recvread;
+	return_ncv(s->recvoffs-s->recvread);
     }
-    return_c EPROTONOSUPPORT;
+    return_c(EPROTONOSUPPORT,-1);
 }
 
 int  sock_read_i(
@@ -75,18 +102,18 @@ int  sock_read_i(
 {
     switch (s->ip_type) {
     case prot_UDP:
-	return_nc(udp_read((UDPSOCKET *)s,dp,len,flags));
+	return_ncv(udp_read((UDPSOCKET *)s,dp,len,flags));
     case prot_TCP:
     case CONN_CLOSED:
-	return_nc(tcp_read(s,dp,len,flags));
+	return_ncv(tcp_read(s,dp,len,flags));
     }
-    return_c EPROTONOSUPPORT;
+    return_c(EPROTONOSUPPORT,-1);
 }
 
 
 /* Kill daemon sockets matching myport we supply a base socket address */
 
-int kill_socket(tcpport_t myport,TCPSOCKET *s)
+void kill_socket(tcpport_t myport,TCPSOCKET *s)
 {
 	TCPSOCKET *sp;
 	while (1) {

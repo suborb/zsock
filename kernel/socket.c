@@ -1,23 +1,42 @@
 /*
- *      Socket Routines For ZSock
- *      
- *      djm 5/12/99
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- *      This is an attempt to provide a unified interface
- *      so the app can be both UDP and TCP based..eg
- *      for internal daemons
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- *	djm 11/1/2000
- *	return_c sets carry flag on return
- *	return_nc clears carry flag on return
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  *
- *	carry indicates an error at high level
+ * This file is part of the ZSock TCP/IP stack.
  *
- *	Needless to say these are non-standard C!
+ * $Id: socket.c,v 1.4 2002-05-13 20:00:48 dom Exp $
  *
- *	12/2/2000 Optimized a little
- *
+ * API Routines
  */
+
+
 
 
 #include "zsock.h"
@@ -160,13 +179,13 @@ int  sock_opened(t)
 	TCPSOCKET *s=t;
 	switch (s->ip_type) {
 		case prot_UDP:
-			return_nc 1;
+			return_ncv(1);
 		case prot_TCP:
-			return_nc (s->state >= tcp_stateESTAB);
+			return_ncv (s->state >= tcp_stateESTAB);
 		case CONN_CLOSED:
-			return_nc 0;
+			return_ncv(0);
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /* 
@@ -179,13 +198,13 @@ int  sock_closed(t)
 	TCPSOCKET *s=t;
 	switch (s->ip_type) {
 		case prot_UDP:
-			return_nc 0;
+			return_ncv(0);
 		case prot_TCP:
-	 		return_nc( s->state >= tcp_stateFINWT1 && s->recvoffs == 0  );
+	 		return_ncv( s->state >= tcp_stateFINWT1 && s->recvoffs == 0  );
 		case CONN_CLOSED:
-			return_nc 1;
+			return_ncv(1);
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /*
@@ -205,7 +224,7 @@ void  *sock_pair_listen(ipaddr,lport,dport,datahandler,protocol)
 		case prot_TCP:
 			return(tcp_listen(ipaddr,lport,datahandler,1,0));
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,NULL);
 }
 
 void  *sock_listen(ipaddr,lport,datahandler,protocol)
@@ -220,7 +239,7 @@ void  *sock_listen(ipaddr,lport,datahandler,protocol)
 		case prot_TCP:
 			return(tcp_listen(ipaddr,lport,datahandler,1,0));
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,NULL);
 }
 
 /*
@@ -239,7 +258,7 @@ void  *sock_open(ipaddr,dport,datahandler,protocol)
 		case prot_TCP:
 			return(tcp_open(ipaddr,0,dport,datahandler,1));
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,NULL);
 }
 
 /*
@@ -248,7 +267,7 @@ void  *sock_open(ipaddr,dport,datahandler,protocol)
  *	Sockets are arranged very similarly...
  */
 
-void  sock_settimeout(s,time)
+int  sock_settimeout(s,time)
 	TCPSOCKET *s;
 	u16_t	time;
 {
@@ -256,9 +275,9 @@ void  sock_settimeout(s,time)
 		case prot_TCP:
 		case prot_UDP:
 			s->timeout=set_ttimeout(time);
-			return_nc 0;
+			return_ncv(0);
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 		
 /*
@@ -274,9 +293,9 @@ int  sock_chktimeout(t)
 	switch (s->ip_type) {
 		case prot_TCP:
 		case prot_UDP:
-			return_nc (chk_timeout(s->timeout));
+			return_ncv (chk_timeout(s->timeout));
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /*
@@ -285,17 +304,17 @@ int  sock_chktimeout(t)
 
 u32_t user_settimeout(int secs)
 {
-	return_nc (set_ttimeout(secs));
+	return_ncv (set_ttimeout(secs));
 }
 
 u32_t user_setctimeout(int csecs)
 {
-	return_nc (set_timeout(csecs));
+	return_ncv (set_timeout(csecs));
 }
 
 int user_chktimeout(u32_t time)
 {
-	return_nc (chk_timeout(time));
+	return_ncv (chk_timeout(time));
 }
 
 
@@ -327,12 +346,12 @@ void  sock_shutdown(t)
 
 ipaddr_t  resolve(char *name)
 {
-	return_nc (resolve_i(name));
+	return_ncv (resolve_i(name));
 }
 
 int  reverse_addr_lookup(ipaddr_t addr, char *name)
 {
-	return_nc (reverse_addr_lookup_i(addr,name));
+	return_ncv (reverse_addr_lookup_i(addr,name));
 }
 
 
@@ -363,9 +382,9 @@ extern u8_t *getxxbyport(struct data_entry *, tcpport_t, u8_t *);
 u8_t getprotobyname(char *name)
 {
 #if 0
-	return_nc (getxxbyname(ip_protocols,name));
+	return_ncv (getxxbyname(ip_protocols,name));
 #else
-	return_nc ( getxxbyname(NULL,name));
+	return_ncv ( getxxbyname(NULL,name));
 #endif
 }
 
@@ -374,9 +393,9 @@ u8_t *getprotobynumber(port,store)
 	u8_t	*store;
 {
 #if 0
-	return_nc (getxxbyport(ip_protocols,port,store));
+	return_ncv (getxxbyport(ip_protocols,port,store));
 #else
-	return_nc (getxxbyport(NULL,port,store));
+	return_ncv (getxxbyport(NULL,port,store));
 #endif
 }
 
@@ -387,9 +406,9 @@ u8_t *getprotobynumber(port,store)
 u8_t	getnetbyname(char *name)
 {
 #if 0
-	return_nc (getxxbyname(ip_networks,name));
+	return_ncv (getxxbyname(ip_networks,name));
 #else
-	return_nc (getxxbyname(NULL,name));
+	return_ncv (getxxbyname(NULL,name));
 #endif
 }
 
@@ -398,9 +417,9 @@ u8_t *getnetbynumber(port,store)
 	u8_t	*store;
 {
 #if 0
-	return_nc (getxxbyport(ip_networks,port,store));
+	return_ncv (getxxbyport(ip_networks,port,store));
 #else
-	return_nc (getxxbyport(NULL,port,store));
+	return_ncv (getxxbyport(NULL,port,store));
 #endif
 }
 
@@ -411,9 +430,9 @@ u8_t *getnetbynumber(port,store)
 tcpport_t getservbyname(char *name)
 {
 #if 0
-	return_nc (getxxbyname(ip_services,name));
+	return_ncv (getxxbyname(ip_services,name));
 #else
-	return_nc (getxxbyname(NULL,name));
+	return_ncv (getxxbyname(NULL,name));
 #endif
 }
 
@@ -422,9 +441,9 @@ u8_t *getservbyport(port,store)
 	u8_t	*store;
 {
 #if 0
-	return_nc (getxxbyport(ip_services,port,store));
+	return_ncv (getxxbyport(ip_services,port,store));
 #else
-	return_nc (getxxbyport(NULL,port,store));
+	return_ncv (getxxbyport(NULL,port,store));
 #endif
 }
 
@@ -435,12 +454,12 @@ u8_t getservprotobyname(char *name )
 
         while (search->name) {
                 if (!strcmp(search->name, name)) {
-                        return_nc search->protocol;
+                        return_ncv search->protocol;
                 }
                 search++;
         }
 #endif
-        return_nc 0;
+        return_ncv(0);
 }
 
 u8_t getservprotobyport(port )
@@ -451,12 +470,12 @@ u8_t getservprotobyport(port )
 
         while (search->name) {
                 if (search->port == port) {
-                        return_nc search->protocol;
+                        return_ncv search->protocol;
                 }
                 search++;
         }
 #endif
-	return_nc 0;
+	return_ncv(0);
 }
 
 size_t GetNetStats(buf,len)
@@ -465,8 +484,8 @@ size_t GetNetStats(buf,len)
 {
 	if (len == 0 ) 
 	    len = sizeof(struct sysstat_s);
-	if (buf) memcpy(buf,netstats,len);
-	return_nc len;
+	if (buf) memcpy(buf,&netstats,len);
+	return_ncv(len);
 }
 
 
@@ -476,12 +495,12 @@ size_t GetNetStats(buf,len)
 
 ipaddr_t inet_addr(u8_t *name)
 {
-	return_nc(inet_addr_i(name));
+	return_ncv(inet_addr_i(name));
 }
 
-u8_t inet_ntoa(ipaddr_t ip, u8_t *buf)
+u8_t *inet_ntoa(ipaddr_t ip, u8_t *buf)
 {
-	return_nc(inet_ntoa_i(ip,buf));
+	return_ncv(inet_ntoa_i(ip,buf));
 }
 
 /*
@@ -496,12 +515,12 @@ void tcp_free(void *ptr)
 
 void *tcp_malloc(size_t len)
 {
-	return_nc(malloc(len));
+	return_ncv(malloc(len));
 }
 
 void *tcp_calloc(size_t num, size_t sz)
 {
-	return_nc(calloc(num,sz));
+	return_ncv(calloc(num,sz));
 }
 
 /*
@@ -513,7 +532,7 @@ int tcp_RegCatchAll(func)
 {
 	int func2=sysdata.catchall;
 	sysdata.catchall=func;
-	return_nc(func2);
+	return_ncv(func2);
 }
 
 /*
@@ -528,15 +547,15 @@ int sock_setptr(s,ptr)
 {
 	switch (s->ip_type) {
 		case prot_UDP:
-			(UDPSOCKET *)s->user=ptr;
+			((UDPSOCKET *)s)->user=ptr;
 			break;
 		case prot_TCP:
 			s->appptr=ptr;
 			break;
 		default:
-			return_c EPROTONOSUPPORT;
+			return_c(EPROTONOSUPPORT,-1);
 	}
-	return_c 0;
+	return_ncv(0);
 }
 
 /* Get the sockets user pointer (daemon) */
@@ -546,13 +565,13 @@ void *sock_getptr(s)
 {
 	switch (s->ip_type) {
 		case prot_UDP:
-			return_nc (UDPSOCKET *)s->user ;
+			return_ncv( ((UDPSOCKET *)s)->user) ;
 			break;
 		case prot_TCP:
-			return_nc ( s->appptr ) ;
+			return_ncv ( s->appptr ) ;
 			break;
 		default:
-			return_c EPROTONOSUPPORT;
+			return_c(EPROTONOSUPPORT,NULL);
 	}
 }
 
@@ -567,10 +586,10 @@ int sock_sethandler(s,f)
 		case prot_TCP:
 		case CONN_CLOSED:
 			s->datahandler=f;
-			return_nc ( 0 ) ;
+			return_ncv ( 0 ) ;
 			break;
 		default:
-			return_c EPROTONOSUPPORT;
+			return_c(EPROTONOSUPPORT,-1);
 	}
 }
 
@@ -582,9 +601,9 @@ int sock_setrsize(s,sz)
 {
 	switch (s->ip_type) {
 		case prot_TCP:
-			return_nc (tcp_recvresize(s,sz) ); 
+			return_ncv (tcp_recvresize(s,sz) ); 
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /* Resize the tcp output buffer (for slow readers) */
@@ -595,9 +614,9 @@ int sock_setssize(s,sz)
 {
 	switch (s->ip_type) {
 		case prot_TCP:
-			return_nc (tcp_sendresize(s,sz) ); 
+			return_ncv (tcp_sendresize(s,sz) ); 
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /* Set the mode of a UDP socket to checksum or not etc */
@@ -609,9 +628,9 @@ int sock_setmode(s,mode)
 	switch (s->ip_type) {
 		case prot_UDP:
 			s->sockmode=mode;
-			return_nc 0;
+			return_ncv(0);
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /* Wait for a socket to be open */
@@ -621,19 +640,19 @@ int sock_waitopen(s)
 {
 	switch (s->ip_type) {
 		case prot_UDP:
-			return_nc 1;
+			return_ncv(1);
 		case prot_TCP:
-			if (s->state==tcp_stateCLOSED) return_c ETIMEDOUT;
+			if (s->state==tcp_stateCLOSED) return_c(ETIMEDOUT,-1);
 			while (getk() != 3) {	/* ^C */
 #ifdef BUSY_VERSION
 				Interrupt();
 #endif
-				if (s->state>=tcp_stateFINWT1) return_nc 0;
-				if (s->state>=tcp_stateESTAB) return_nc 1;
+				if (s->state>=tcp_stateFINWT1) return_ncv(0);
+				if (s->state>=tcp_stateESTAB) return_ncv(1);
 			}
-			return_nc -1;
+			return_ncv(-1);
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /* Wait for a socket to be closed */
@@ -643,17 +662,17 @@ int sock_waitclose(s)
 {
 	switch (s->ip_type) {
 		case prot_UDP:
-			return_nc 1;
+			return_ncv(1);
 		case prot_TCP:
 			while (getk() != 3) {	/* ^C */
 #ifdef BUSY_VERSION
 				Interrupt();
 #endif
-				if (s->state>=tcp_stateFINWT1 ) return_nc 1;
+				if (s->state>=tcp_stateFINWT1 ) return_ncv(1);
 			}
-			return_nc -1;	/* Error */
+			return_ncv(-1);	/* Error */
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 
@@ -664,12 +683,12 @@ int kill_daemon(port,protocol)
 	switch (protocol) {
 		case prot_TCP:
 			kill_socket(port,sysdata.tcpfirst);
-			return_nc 0;
+			return_ncv(0);
 		case prot_UDP:
-			kill_socket(port,sysdata.udpfirst);
-			return_nc 0;
+			kill_socket(port,(TCPSOCKET *)(sysdata.udpfirst));
+			return_ncv(0);
 	}
-	return_c EPROTONOSUPPORT;
+	return_c(EPROTONOSUPPORT,-1);
 }
 
 /* Set type of service */
@@ -715,7 +734,7 @@ int sock_getinfo(TCPSOCKET *t, struct sockinfo *sock)
 			sock->local_port = s->myport;
 			sock->remote_port = s->hisport;
 #endif
-			return 0;
+			return_ncv(0);
 	}
-	return_c -1;
+	return_c(EPROTONOSUPPORT,-1);
 }

@@ -1,32 +1,41 @@
 /*
+ * Copyright (c) 1999-2002 Dominic Morris
+ * All rights reserved. 
  *
- *      Basic ICMP Module to the Small C+ TCP stack
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by Dominic Morris.
+ * 4. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.  
  *
- *      djm 18/2/99
- * 
- *      All this does is reply to a ping message
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  *
- *	djm 4/12/99
- *	Can send an ICMP message
+ * This file is part of the ZSock TCP/IP stack.
  *
- *	djm 8/12/99
- *	DOESN'T KEEP PACKET ANY LONGER!!!
+ * $Id: icmp.c,v 1.4 2002-05-13 20:00:48 dom Exp $
  *
- *	djm 11/1/2000
- *	To reflect recent changes (hah!)
- *	We now have an option to pass an ICMP packet to
- *	a user routine to examine for ping etc
- *	We now have a routine to send a ping packet
- *
- *	Things to implement
- *	- Source Quench Request - almost farcial - are we 
- *	talking to a c64 (possible though)
- *	- Host unreachable (i.e. link down)
- *	- Port unreachable (i,e. UDP/traceroute)
- *	- Prot unreachable (unlikely since we only talk ICMP/UDP/TCP)
- *	All these require passing message up to the user level..not
- *	in this initial package release of ZSock
+ * ICMP Routines
  */
+
 
 
 #include "zsock.h"
@@ -38,12 +47,21 @@ static void           icmp_cancel(struct ip_header *ip,unsigned char type,u32_t 
 static int __CALLEE__ icmp_fix_cksum(int cksum, int add);
 #endif
 
+/* An ICMP packet */
+struct pktdef {
+    ip_header_t    ip;
+    icmp_header_t  icmp;       
+};
+
+
+
 /*
  * Register User ICMP Handler..eg for ping
  *
  * This is only used by app, so can get away with
  * removing the check..
  */
+
 
 void *icmp_register(int (*fn)())
 {
@@ -66,10 +84,8 @@ void icmp_deregister()
 void icmp_send(ip_header_t *buf,u8_t type,u8_t code,u32_t *unused)	
 {
     u16_t 	length;
-    struct pktdef {
-	ip_header_t    ip;
-	icmp_header_t  icmp;       
-    } *pkt;
+    struct      pktdef *pkt;
+  
 
 /* Don't send ICMP in response to ICMP */
     if (buf->protocol == prot_ICMP){
@@ -161,7 +177,7 @@ u32_t icmp_ping_pkt(ipaddr_t ipaddr,u32_t *unused,u16_t len)
     pkt->icmp.cksum  = 0;
     pkt->icmp.unused = *unused;
     /* ICMP checksum */
-    pkt->icmp.cksum  = htons(inet_cksum(pkt->icmp,length-20 ));
+    pkt->icmp.cksum  = htons(inet_cksum(&pkt->icmp,length-20 ));
     ip_send((ip_header_t *)pkt,length,prot_ICMP,255);
     return( current_time() );
 }
@@ -233,7 +249,7 @@ void icmp_handler(void *buf,u16_t len)
 static void icmp_cancel(struct ip_header *ip,unsigned char type,u32_t new)
 {
     if ( ip->protocol == prot_TCP)
-	tcp_cancel(ip,type,&new);
+	tcp_cancel(ip,type,(ipaddr_t *)&new);
 }
 
 
