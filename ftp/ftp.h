@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: ftp.h,v 1.4 2002-06-08 17:19:03 dom Exp $
+ * $Id: ftp.h,v 1.5 2002-06-08 17:23:27 dom Exp $
  *
  */
 
@@ -49,6 +49,7 @@
 #define CR '\r'
 #define LF '\n'
 #else
+#include <z88.h>
 #define CRLF "\n\r"
 #define CR '\n'
 #define LF '\r'

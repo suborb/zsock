@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: main.c,v 1.6 2002-06-08 17:19:03 dom Exp $
+ * $Id: main.c,v 1.7 2002-06-08 17:20:59 dom Exp $
  *
  */
 
@@ -45,7 +45,13 @@ int main(int argc, char *argv[])
 
 #ifndef SCCZ80
     StackInit();
+#else
+    if (QueryPackage(LIB_TCP,0,0) == NULL) {
+        printf("Couldn't open ZSock Library - Is it installed?\n");
+        exit(1);
+    }
 #endif
+
 
     if ( argc == 2 ) {
 	cmd_open(argc,argv);
