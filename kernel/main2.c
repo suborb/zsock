@@ -91,7 +91,7 @@ UserConfig()
 	sysdata.numnameserv=j;
 }
 
-netstat()
+do_netstat()
 {
         static char *st[]=
         { "LISTEN","SYNSENT","SYNREC","ESTAB","ESTABCL",

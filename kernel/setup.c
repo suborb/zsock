@@ -9,7 +9,7 @@
  *
  */
 
-// #define FDSTDIO 1
+#define FDSTDIO 1
 
 #include "zsock.h"
 #include <stdlib.h>
@@ -50,7 +50,7 @@ struct sysstat_s netstats;
 
 HEAPSIZE(HPSIZE)
 
-static char version[]="$VER:ZSock v2.2 (c) 2001 D.Morris\n\r";
+static char version[]="$VER:ZSock v2.21 (c) 2001 D.Morris\n\r";
 
 extern BYTE *allocatepkt();
 extern PktDrvRegister();

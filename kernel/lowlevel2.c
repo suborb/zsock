@@ -464,8 +464,7 @@ void _GoTCP(void)
 
 ; Package call.
 ; Pages in/out Zsock data page
-; Entry:  a = 0		;page out & l = bank to page in
-;	  a = 1		;page in
+; Entry:  l = bank to page in
 ; Exit:   l = Bank which was just switched out
 
 ; Same:  ..BC..../IXIY
@@ -566,7 +565,7 @@ void _GoTCP(void)
 	defw	_sock_settos
 	defw	_sock_setttl		;48
 	defw	_sock_pair_listen	;49
-	defw	_sock_setssize		;50
+	defw	_sock_setssize
 
 ; Some External defs
 

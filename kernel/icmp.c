@@ -28,7 +28,6 @@
  *	in this initial package release of ZSock
  */
 
-#include <stdio.h>
 #include <net/hton.h>
 #include "zsock.h"
 
@@ -184,7 +183,7 @@ void ICMP_Handler(buf,len)
 {
         LWORD  addr;
 	BYTE	*buf2;
-        struct ip_header *ip,*ret;
+        struct ip_header *ip;
         struct icmp_header *icmp;
 
         ip=buf;
@@ -198,14 +197,12 @@ void ICMP_Handler(buf,len)
 		return;
 	}
 #ifdef NETSTAT
-	++netstats.icmp_inp[icmp->type];
+		++netstats.icmp_inp[icmp->type];
 #endif
 
 	if (sysdata.usericmp) {
 		if ( sysdata.usericmp(ip,icmp) == 0 ) return;
 	}
-	/* Point to the IP address in the returned packet */
-	ret = (struct ip_header *) (icmp->data);
         switch (icmp->type) {
 /* Reply to a ping */
                 case ECHO_REQUEST:
@@ -225,30 +222,9 @@ void ICMP_Handler(buf,len)
 			Move(buf,buf2,htons(ip->length));
                         SendPacket(buf2,htons(ip->length));
                         break;
-		case DEST_UNREACH:
-			if ( icmp->code < 6 ) {
-				icmp_cancel(ret,1,0L);
-			}
-			break;
-#ifdef NEED_QUENCH
-		case QUENCH:
-			icmp_cancel(ret,2,0L);
-			break;
-#endif
-		case REDIRECT:
-			if ( icmp->code < 4  )
-				icmp_cancel(ret,2,icmp->unused);
-			break;
         }
         return;
 }
-
-int icmp_cancel(struct ip_header *ip,unsigned char type,u32_t new)
-{
-	if ( ip->protocol == prot_TCP)
-		tcp_cancel(ip,type,new);
-}
-
 
 /*
  * Fill in the basics of an ip header...

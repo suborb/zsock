@@ -43,7 +43,7 @@ int main()
 }
 
 
-void __APPFUNC__ handlecmds(unsigned char cmd)
+void __APPFUNC__ handlecmds(int cmd)
 {
 
 
@@ -52,7 +52,7 @@ void __APPFUNC__ handlecmds(unsigned char cmd)
 		switch (cmd) {
 			case 0x87:
 				_DeviceOffline(HANGUP);
-				printf("Hungup");
+				printf("Hungup\n");
 				break;
 			case 0x88:
 				_DeviceOffline(NOHANGUP);
@@ -73,7 +73,7 @@ void __APPFUNC__ handlecmds(unsigned char cmd)
 					Ping();
 					break;
 				case 0x82:
-					Netstat();
+					do_netstat();
 					break;
 				case 0x83:
 					UserConfig();

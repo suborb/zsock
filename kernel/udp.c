@@ -37,9 +37,7 @@ UDPInit()
 {
         sysdata.udpport=1024;
         sysdata.udpfirst=0;
-#ifdef UDP_INTERNAL
         RegisterServicesUDP();
-#endif
 #ifdef MODEL2
         tftp_init();
 #endif
@@ -75,6 +73,7 @@ UDPSOCKET *udp_open(ipdest,lport,dport,datahandler,type)
                 if ((s->recvbuff=malloc(UDPBUFSIZ))!=NULL) s->recvsize=UDPBUFSIZ;
         return_nc(s);
 }
+
 
 udp_close(UDPSOCKET *ds)
 {
@@ -136,12 +135,12 @@ udp_handler(ip,length)
 
 /* Check active sockets */
 
+
         for ( s = sysdata.udpfirst ; s ; s = s->next ) 
                 if ( s->ip_type == prot_UDP && s->hisport &&
                      up->dstport == s->myport &&
                      up->srcport == s->hisport &&
                      ip->source == s->hisaddr) break;
-
 /* Now for passive */
         if ( s == NULL ) {
                 for ( s = sysdata.udpfirst ; s ; s = s->next ) {

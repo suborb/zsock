@@ -67,7 +67,6 @@
  *		happening really...
  */
 
-#define FDSTDIO 1
 #include <stdio.h>
 #include <net/hton.h>
 #include "zsock.h"
@@ -875,7 +874,7 @@ tcp_handler(ip,length)
                 }
                 if ( ( flags & tcp_flagACK ) && tp->acknum == (s->seqnum + 1)  ) {
 			/* This is quite kludgey but it works... */
-    			s->window=min(htons(tp->window),tcp_MAXDATA);
+    			s->window=min(htons(tp->window),tcp_MAXDATA*2);
                         s->flags=tcp_flagACK;
                         ++s->seqnum;
 #ifdef NETSTAT
@@ -939,7 +938,7 @@ tcp_handler(ip,length)
                 }
                 if ( (diff > 0 && s->sendoffs) || len > 0 ) {
                         /* Update window...how urgent? */
-                        if  ( (diff >0 && s->sendoffs) || (len > (s->mss >> 1) )) 
+                        if  ( (diff >0 && s->sendoffs) || (len > 0) ) 
                                 TCPSEND(s);
                         else
                                 tcp_sendsoon(s);
@@ -1115,7 +1114,7 @@ tcp_processdata(s, tp, len)
     BYTE *dp;
 
 /* This is quite kludgey but it works... */
-    s->window=min(htons(tp->window),tcp_MAXDATA);
+    s->window=min(htons(tp->window),tcp_MAXDATA*2);
 
     diff = s->acknum - tp->seqnum;
     if ( tp->flags & tcp_flagSYN ) --diff;
@@ -1214,6 +1213,7 @@ tcp_send(s)
         }
 #endif
 
+
 	if (s->karn_count != 2 ) {
 		sendtotdata=s->sendoffs-s->unacked;
 		sendtotdata=min(s->sendoffs,s->window) - s->unacked;
@@ -1224,7 +1224,6 @@ tcp_send(s)
 	}
 	if	(sendtotdata<0) sendtotdata=0;
 
-	putn(sendtotdata);
 
 /*
  *  For non SYM packets this allocates an extra 4 bytes..not really
@@ -1232,9 +1231,7 @@ tcp_send(s)
  */
 	sendtotlen = 0;
 	for (i= 0; i< s->cwindow; i++ ) {
-		senddata = min( sendtotdata,536);
-
-		putn(senddata);
+		senddata = min( sendtotdata,s->mss);
 
 
 		if ((pkt = AllocatePkt(sizeof (struct pktdef) + senddata)) == NULL ) return;
@@ -1263,7 +1260,7 @@ tcp_send(s)
         		pkt->tcp.offset=6*16;
         		pkt->ip.length += 4;
         		pkt->maxsegopt = htons(512+4);
-        		pkt->maxsegopt2 = htons(512);
+        		pkt->maxsegopt2 = htons(s->mss);
     		} else {
 /* We can have data! */
         		pkt->tcp.offset=5*16;

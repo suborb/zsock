@@ -30,12 +30,10 @@ RegisterServicesTCP()
         tcp_listen(0L,79,FingerDaemon,0,0);
 }
 
-#ifdef UDP_INTERNAL
 RegisterServicesUDP()
 {
 	udp_open(0,7,0,UDPEchoServer,0);
 }
-#endif
 
 
 
@@ -74,7 +72,6 @@ QuoteServer(addr,code,s)
  * easy function!
  */
 
-#ifdef UDP_INTERNAL
 UDPEchoServer(addr,len,ip,up,s)
 	BYTE	*addr;
 	WORD	len;
@@ -88,7 +85,6 @@ UDPEchoServer(addr,len,ip,up,s)
 	EchoServer(addr,len,n);
 	udp_close(n);
 }
-#endif
 
 
 

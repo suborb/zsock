@@ -15,7 +15,7 @@
 #define HELP3	"This demo contains shared library facilities,"
 #define HELP4	"echo/qotd/finger services and a ping client"
 #define HELP5   ""
-#define HELP6   "v2.2 (c) 25/2/2001 D.J.Morris"
+#define HELP6   "v2.21 (c) 27/6/2001 D.J.Morris"
 
 #define APP_INFO "TCP Stack"
 #define APP_KEY  'S'
@@ -90,8 +90,8 @@ extern int _syscall();
 extern int _Interrupt();
 extern int _DeviceOnline();
 extern int _DeviceOffline();
-extern int _user_pagein();
-extern int _user_pageout();
+extern int user_pagein();
+extern int user_pageout();
 extern int _GoTCP();
 
 package_str zx_pstr[] = {

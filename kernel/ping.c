@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <net/hton.h>
+#include <net/misc.h>
 #include "zsock.h"
 
 
@@ -79,9 +80,7 @@ void Ping()
 				ident++;
 		} 
 		if (getk() == 27 ) break;
-#ifdef BUSY_VERSION
-		Interrupt();
-#endif
+		BUSYLOOP();
 	}
 
 	DeRegisterICMPHandler();

@@ -7,8 +7,7 @@
  * things for this..
  */
 
-#define BUSYLOOP() Interrupt();
-// _GoTCP()
+#define BUSYLOOP() GoTCP()
 #define BUSYINT()  Interrupt()
 
 #define BUSY_VERSION 1

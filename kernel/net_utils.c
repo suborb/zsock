@@ -161,7 +161,7 @@ static u16_t inet_aton(cp, addr)
 struct data_entry ip_services[] = {
 	{ "echo",	 7 ,prot_TCP },
 	{ "qotd",	17 ,prot_TCP },
-//	{ "chargen",	19 ,prot_TCP },
+	{ "chargen",	19 ,prot_TCP },
         { "ftp",        21 ,prot_TCP },
         { "ftp-data",   20 ,prot_TCP },
         { "telnet",     23 ,prot_TCP },
@@ -184,9 +184,9 @@ struct data_entry ip_protocols[] = {
 };
 
 struct data_entry ip_networks[] = {
-//	{ "arpa",	10 ,0 },
+	{ "arpa",	10 ,0 },
 	{ "arpanet",	10 ,0 },
-//	{ "loop",	127 , 0 },
+	{ "loop",	127 , 0 },
 	{ "loopback",	127 ,0 },
 	{ 0, 		0,0 }
 };
