@@ -1,11 +1,11 @@
 
 CFLAGS = -g
 
-all: z88mail
+all: ftp
 
 OBJS = cmd.o ftp.o main.o makeargs.o net_unix.o
 
-z88mail: $(OBJS)
+ftp: $(OBJS)
 	$(CC) -o ftp $(OBJS)
 
 
