@@ -8,6 +8,7 @@
 #ifndef __OS_LCP_OPTIONS_H
 #define __OS_LCP_OPTIONS_H
 
+#include <sys/types.h>
 #include "portability.h"
 
 

@@ -1,14 +1,22 @@
+CC	 = zcc
+TARGET   = +z88
+CFLAGS	 = -vn -startup=5 -preserve -DZSOCK
+INCLUDES = -I. 
+LIBS   = -lnet -lz88 
+LDFLAGS	 = -create-app  
 
-CFLAGS = -g -DZSOCK -I. -I../include
+SOURCES = ftp.c cmd.c makeargs.c net_zsock.c main.c
 
-all: ftp
+OBJS = $(SOURCES:.c=.o)
 
-OBJS = cmd.o ftp.o main.o makeargs.o net_zsock.o
-DEV  = -L../devices/ppp -lppp
 
-ftp: $(OBJS)
-	$(CC) -o ftp $(OBJS) $(DEV) -lutil -L ../kernel -lzsock 
+all: ftp.com
 
+ftp.com: $(OBJS)
+	$(CC) $(TARGET) $(CFLAGS) -Cz+z88shell -startup=5 -o $@ $(OBJS) $(LDFLAGS) $(LIBS)
+
+%.o: %.c
+	$(CC) $(TARGET) $(CFLAGS) $(CMDCFLAGS) $(INCLUDES) -c $<
 
 clean:
-	rm -f *.o ftp *~
+	rm -f *.opt *.o ftp.com 

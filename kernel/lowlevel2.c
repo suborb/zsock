@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: lowlevel2.c,v 1.6 2002-10-08 20:43:55 dom Exp $
+ * $Id: lowlevel2.c,v 1.7 2005-03-05 19:37:20 dom Exp $
  *
  * Z88 Packages
  */
@@ -41,6 +41,9 @@
 
 
 #include "zsock.h"
+
+static ipaddr_t SetHostAddr(ipaddr_t ip);
+static size_t SetNameServers(ipaddr_t ns1, ipaddr_t ns2);
 
 
 #ifdef Z88
@@ -582,8 +585,8 @@ void _GoTCP(void)
 	defw	_getnetbynumber
 	defw	_getdomain
 	defw	_gethostaddr
-	defw	_sethostaddr		;30
-	defw	_setnameservers
+	defw	sethostaddr		;30
+	defw	setnameservers
 	defw	_getnetstats
 	defw	_inet_addr
 	defw	_inet_ntoa
@@ -641,8 +644,8 @@ void _GoTCP(void)
 	XREF	_getnetbynumber
 ;	XREF	_getdomain
 ;	XREF	_gethostaddr
-	XREF	_sethostaddr
-	XREF	_setnameservers
+	XREF	sethostaddr
+	XREF	setnameservers
 	XREF	_getnetstats
 	XREF	_inet_addr
 	XREF	_inet_ntoa

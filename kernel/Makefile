@@ -1,23 +1,37 @@
+TARGET   = +z88
+#TARGET   = +cpm
 
-CFLAGS	 = -DNETSTAT -g -DLIBRARY -DPPP
+
+CC	 = zcc
+CFLAGS	 = -vn -DNETSTAT -DINACTIVETO=1200 -make-app -O3  -preserve
 INCLUDES = -I. -I../include
-LIBS	 = -lutil
-OBJS 	 = unixmain.o pbuf.o icmp.o ping.o pppset.o socket.o socket_int.o \
-	tcp.o tcp_int.o udp.o udp_dom.o generic.o loopback.o time.o \
-	setup.o ip.o net_utils.o pty.o device.o httpd.o 
-DEV     = ../devices/ppp/libppp.a
-#DEV     = ../devices/ppp/libslip.a
+LIBS	 = -lnetdev -lmalloc
+LDFLAGS	 = 
 
-%.o: %.c zsock.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c $<
+SOURCES  := setup.c icmp.c ip.c udp.c tcp.c udp_dom.c  \
+	handler_call.c net_utils.c loopback.c pbuf.c socket.c socket_int.c \
+	pppset.c slip_dev.c z80.c time.c tcp_int.c ping.c lowlevel2.c device.c
 
-all:	$(OBJS)
-	$(CC) $(LDFLAGS) -o zsock $(CFLAGS) $(OBJS) $(DEV) $(LIBS)
+ifeq (+z88,$(TARGET))
+	SOURCES +=  config_read.c main.c app.c
+	LDFLAGS = -create-app -nt
+	LIBS += -lz88
+endif
 
-libzsock.a: $(OBJS) 
-	ar cru libzsock.a $(OBJS) 
-	ranlib libzsock.a
+ifeq (+cpm,$(TARGET))
+	SOURCES += unixmain.c
+endif
 
-	
+ASMS	  := $(SOURCES:.c=.opt)
+
+all:	$(ASMS)
+	$(CC) $(TARGET) $(LDFLAGS) -o zsock $(CFLAGS) $(ASMS) $(LIBS)
+
+
+
+%.opt: %.c zsock.h
+	$(CC) $(TARGET) $(CFLAGS) -a $(INCLUDES)  $<
+
+
 clean:
-	rm -f *.o *~ zsock
+	rm -f *.opt *~ zsock zsock.62 zsock.63 zcc_opt.def

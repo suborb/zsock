@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: ftp.h,v 1.6 2002-10-08 21:41:29 dom Exp $
+ * $Id: ftp.h,v 1.7 2005-03-05 19:37:20 dom Exp $
  *
  */
 
@@ -88,6 +88,9 @@ typedef u16_t tcpport_t;
 #endif
 
 #define MAXARGS 10
+
+#define FALSE 0
+#define TRUE 1
 
 
 typedef int tcpsock_t;             /* Should be okay for ZSock as well */

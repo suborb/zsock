@@ -1,1 +1,0 @@
-zcc -oslip.dev -startup=4 -DPLUGIN slip_dev.c

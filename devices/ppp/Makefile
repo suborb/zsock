@@ -1,19 +1,22 @@
+CC	 = zcc
+TARGET   = +z88
+CFLAGS	 = -vn -DPAP -O3 -startup=4 -preserve
+INCLUDES = -I.  -I../../kernel -I../../include
+LIBS	 = -lnetdev
+LDFLAGS	 = 
 
-CFLAGS	 = -g -DLINUX -DPAP
-INCLUDES = -I. -I../../include
-LIBS	 = 
-OBJS 	 = hldc.o lcp_options.o pap.o ppp.o utils.o serial.o
+SOURCES = ppp.c hldc.c lcp_options.c utils.c pap.c serial.c
+
+OBJS	= $(SOURCES:.c=.o)
+
+all:	ppp.dev
+
+ppp.dev: $(OBJS)
+	$(CC) $(TARGET) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $@ $(LIBS) 
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $<
+	$(CC) $(TARGET) $(CFLAGS) $(INCLUDES) -c $<
 
-all: $(OBJS)
-	$(CC) $(LDFLAGS) -o zsock $(CFLAGS) $(OBJS) $(LIBS)
 
-libppp.a: $(OBJS)
-	ar cru libppp.a $(OBJS)
-	ranlib libppp.a
-
-	
 clean:
-	rm -f *.o *~ libppp.a
+	rm -f *.opt $(OBJS) *~ ppp.dev zcc_opt.def
