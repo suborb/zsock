@@ -1,0 +1,209 @@
+ZSock v2.3 - 1/6/2002
+--------------------
+
+Welcome to the latest release of ZSock - and the first in quite a long time,
+this release is mainly concerned with bugs and stability.
+
+For those unaware, ZSock is a TCP/IP stack for the z88, it is still
+in the developmental phase and so it may not work quite as well for you as
+it does for me..
+
+ZSock v2.3 is distributed in the form of two applications: a ZSock
+application which contains the ZSock kernel and simple controlling
+application and a telnet application which contains the 'chat' client and
+a tftpd package, the features of ZSock are:
+
+- VT52 Terminal client
+- Telnet client allowing access to any remote port/host
+- Ping client
+- Tftp daemon for transferring files
+- Echo,quote and finger servers for testing purposes
+- Forward and reverse name resolving via a remote nameservers
+- Responds to ping and traceroute requests
+- Chat client to enable automated dialup and connection to ISPs
+- Full API available for programming of network based programs
+
+Configuration
+-------------
+You can configure ZSock in two ways - either from within the
+program or via a set of configuration files. The latter is
+the preferred method (and saves a lot of typing!) You should
+create the following plain text files:
+
+:RAM.0/resolv.cfg
+
+Which contains on line 1 your default domainname and on lines 2 & 3 
+the IP addresses of the nameservers on your network
+
+eg for my LAN:
+
+suborbital
+192.168.155.19
+
+:RAM.0/hostname
+
+Which contains on line one the hostname of your z88 and on line two the 
+IP address of your z88, eg for my z88 this contains:
+
+z88
+192.168.155.88
+
+Connecting to your LAN/dialing up your ISP
+------------------------------------------
+
+ZSock uses the SLIP protocol for connecting to the outside world,
+only a few ISPs support this archaic protocol - check to see if yours
+does.
+
+Connection to a LAN:
+
+Set Up a slip server on the machine which your z88 is connected to
+(see man sliplogin etc etc, or an the Amiga do the following)
+
+echo "serial.device 0 9600 0.0.0.0 MTU=576 7WIRE " >ENV:Sana2/slip0.config
+ifconfig slip0 [amiga ip addy] [z88 ip addy] up
+online slip0
+
+Next go round your LAN setting up routing, for *nix boxes see man 1m route
+for example on HP-UX 9 machines this should result in a line similar to:
+
+% route add 192.168.155.88 [amiga ip] 1
+
+Or on some linux boxes:
+
+% route add 10.0.0.88 gw [amiga ip]
+
+Or on a *BSD box:
+
+% route add 192.168.155.88 -gateway [amiga ip]
+
+Dialing up to ISP:
+
+This can be achieved using the chat client which is a sub-application
+within the telnet application. This will either read a file called
+script.cht in the current directory/drive or will read filemail so you can
+select a file from the filer and then enter the application. A sample
+script.cht file is given in the telnet/ directory.
+
+Important notes:
+
+- Turn Xon/Xoff off from the z88 panel
+- Set the MTU of the remote host to be something like 576 to avoid
+fragmentation and lost packets.
+
+Terminal Fun!
+-------------
+
+The terminal emulated by ZSock is of the VT52 type. This is a very simple
+and easy to emulate terminal. However it does work with quite a few
+programs providing you tell the remote host that your running (Zsock
+doesn't yet pass the terminal type to the remote host when logging in) do
+this with the following lines:
+
+% setenv TERM vt52
+% stty rows 8
+% stty ocrnl
+
+You can then use pico, emacs and lynx without too many problems. To use vi
+you have to issue an stty -ocrnl before you use it - I'm not sure why but
+nevermind. Yes! Since ZSock turned into an application vi now works
+"properly"
+
+Things to do
+------------
+
+I hope that ZSock is easy to use, but here are some non obvious
+things to do should you feel like playing:
+telnet to port 7 of a host to have an exciting conversation
+telnet to port 13 of a host to find out it's local time
+telnet to port 25 of an SMTP host to send mail
+telnet to port 79 of a host to do a finger
+telnet to port 80 of a host to read web pages
+telnet to port 110 of a host to receive mail (POP3)
+telnet to port 119 of a host to read/post news (*shudder*)
+telnet to port 143 of a host to receive mail (IMAPv4)
+
+If people have been careless telnet to ports 98 and 901 to sort out their
+Linux/Samba2 configs
+
+Lastly...telnet to port 139 Win95 box to crash it <grin>
+
+Source Code
+-----------
+
+IS SUPPLIED IN THE ARCHIVE.
+
+
+The Future
+----------
+
+Several things I would like to do:
+
+- Add IP defragmentation - this would take place in a separate package due
+to lack of memory in the ZSock kernel (I've got about 500 bytes free!)
+
+- Work on PPP support (get it working...)
+
+- Garry Lancaster is working on Webby
+
+- I'm working on a simple mail client 
+
+If you want to port ZSock to a different machine then please let
+me know and we'll try to work together on it.
+
+ZSock has been "ported" to a Linux machine (where most of the debugging
+took place) and works quite happily - I've dragged 60k/sec out of the
+httpd server - though since it does a polling read it does suck up
+CPU somewhat.
+
+Similarly, it works under CPM using a modified ZXCC.
+
+
+Licencing
+---------
+
+I've decided to place ZSock under a BSD-style licence. Having said that
+I'd appreciate any bugfixes to the code.
+
+
+
+Acknowledgements
+----------------
+
+ZSock contains code and ideas derived from:
+
+- Erick Engelka's Waterloo TCP
+- Joost ??? MSX TCP project (project now dead)
+- Berkeley TCP/IP implementation
+
+Enjoy ZSock...
+
+dom <dom@jadara.org.uk>
+1/6/2002
+
+History
+-------
+
+v2.3	      TCP layer debugged, with hopefully only one outstanding
+	      problem - resizing the incoming window - this isn't done
+	      at all.
+
+v2.2 	      It was a long, long time ago since I last updated this
+              file! Many changes made, not least in the fact we have a
+working API and most things seem to be bugfixed. The change between this
+releas r13 and r12 is that udp_close now works and I've included a cheap
+chat client. 
+
+v2.0b9app     Fixed problems with tcp daemons barfing when
+              being called (Weird one!)
+              Sped up terminal, made compatible with Dennis
+              Groening's z88 termcap
+              [Problem] Connection to by HP box barfs badly
+              for telnet..I'm current stupified..but releasing
+              anyway since this release fixes a few stupid
+              things
+              [Problem] Still can't tag into the interrupt
+              chain on the z88
+
+v2.0b8app     First application release
+
