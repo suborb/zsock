@@ -1,6 +1,6 @@
 
 CFLAGS	 = -g -DLINUX -DPAP
-INCLUDES = -I.
+INCLUDES = -I. -I../../include
 LIBS	 = 
 OBJS 	 = hldc.o lcp_options.o pap.o ppp.o utils.o serial.o
 
@@ -16,4 +16,4 @@ libppp.a: $(OBJS)
 
 	
 clean:
-	rm -f *.o *~ 
+	rm -f *.o *~ libppp.a
