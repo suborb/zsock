@@ -156,9 +156,9 @@ tftp_daemon(tp,len,ip,up,s)
 	}
 
         request = ntohs(tp->th_opcode);
-/* This handler is only called at the start, we spawn other "processes"
- * which will take care of data later on..
- */
+	/* This handler is only called at the start, we spawn other "processes"
+	 * which will take care of data later on..
+	 */
         if ( request == WRQ  || request == RRQ  ) {
                 u8_t    xfermode;
                 u8_t    first;
@@ -196,7 +196,7 @@ again:
                 blk->mode=xfermode;
                 blk->block=0;
                 blk->fd=0;
-               // printk("tftpd request %d file: %s type: %s\n",request,blk->filename,mode);
+		// printk("tftpd request %d file: %s type: %s sock=%d\n",request,blk->filename,mode,n);
                 if ( request == WRQ ) {
 /* Starting a write, first off create the file... */
                         sock_sethandler(n,RECV_CALL);

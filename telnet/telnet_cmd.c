@@ -28,28 +28,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef __Z88__
-#include <z88.h>
-#else
-#include "config.h"
-typedef unsigned char bool_t;
-int PrintVT52(char ch)
-{
-	putc(ch,stdout);
-	return 0;
-}
-
-#define nameapp(x) 
-#define ResetTerm()
-
-#endif
-
 #include <net/inet.h>
 #include <net/socket.h>
 #include <net/resolv.h>
 #include <net/misc.h>
-
-
+#include <z88.h>
 
 
 /*
@@ -105,32 +88,42 @@ void send_iac();
 void SetTelOptions(u8_t x);
 
 
-
-telnet()
+int main(int argc, char *argv[])
 {
-        char    hostname[80];
+    char  hostname[80];
         tcpport_t port;
         ipaddr_t  addr;
         u8_t    flag;
 
+	if ( argc < 2 || argc > 3 ) {
+	    printf("telnet: host [port]\n");
+	    exit(1);
+	}
 
-	nameapp("No conn");
+	if (QueryPackage(LIB_TCP,0,0) == NULL) {
+                printf("Couldn't open ZSock Library - Is it installed?\n");
+                exit(1);
+        }
 
-	memset(&t,0,sizeof(t));
 
-        printf("Enter remote hostname/IP\n");
-        fgets(hostname,79,stdin);
-        addr=resolve(hostname);
-        if (addr == 0 ) {
+
+	addr = resolve(argv[1]);
+
+        if (addr == NULL ) {
 	    printf("Unknown host\n");
 	    goto out;
         }
 
-	printf("\nEnter port to connect to (default=23)\n");
-	fgets(hostname,79,stdin);
-	if ( ( port=atoi(hostname)) == 0 ) port=23;
-
-
+	if ( argc == 3 ) {
+	    port = atoi(argv[2]);
+	    if ( port == 0 ) {
+		printf("Non-numeric port %s\n",argv[2]);
+		exit(1);
+	    }
+	} else {
+	    port = 23;
+	}
+	
         inet_ntoa(addr,hostname);
         ResetTerm();
 	t.options[TELOPT_ECHO]=1;
@@ -141,27 +134,19 @@ telnet()
                 printf("Socket not created..memory?!?!?\n");
 		goto out;
         }
-/* Resize input buffer to 1k (from 512 bytes) */
-	sock_setrsize(t.s,1024);
+	/* Resize input buffer to 1k (from 512 bytes) */
+	sock_setrsize(t->s,1024);
 
-/* Name the application after the hostname */
-	hostname[15]=0;
-	nameapp(hostname);
 
         flag=1;
         while (flag) {
-#ifdef __Z88__
 		GoTCP();	/* Sadly we're busy wait... */
-		flag = GoTelnet(0);
-#else
-		Interrupt();
                 flag=GoTelnet(getk());
-
-#endif
         }
         if (t.msg) printf("\n%s\n",t.msg);
 	sock_shutdown(t.s);
 out:
+	exit(0);
 }
 
 GoTelnet(x)
@@ -217,9 +202,6 @@ GoTelnet(x)
                 ptr=rdbuffer;
                 while (len--)
                         telnet_print(*ptr++,1);
-#ifndef SCCZ80
-		fflush(stdout);
-#endif
         } else sock_flush(s);
 
 /*
@@ -250,9 +232,6 @@ GoTelnet(x)
                         }
                 } else {
                         telnet_print(x,0);
-#ifndef SCCZ80
-			fflush(stdout);
-#endif
                 }
 		sock_putc(x,s);
 		sock_flush(s);
