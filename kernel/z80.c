@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: z80.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ * $Id: z80.c,v 1.4 2002-06-01 21:43:18 dom Exp $
  *
  * Z80 Checksumming routines etc
  */
@@ -40,7 +40,7 @@
 #include "zsock.h"
 
 
-#ifdef Z88
+#ifdef __Z88__
 u32_t current_time()
 {
 #asm
@@ -155,7 +155,7 @@ u16_t inet_cksum_pseudo(ip_header_t *ip,void *tcp,u8_t protocol,u16_t length)
 /* Check the IP checksum, returns zero if good packet */
 u16_t ip_check_cksum(ip_header_t *buf)
 {
-#asm
+#asm  
         ld      a,(hl)
         and     @00001111
         rlca
@@ -294,6 +294,7 @@ u16_t inet_cksum(void *buf,u16_t len)
                ld   b,a       ; (cb=#words)
                ex   af,af        ; save cary for a single byte
                ld   de,0      ; de=sum
+	       ld   a,b
                or   c         ; check for zero also clear carry
                jr   z,FastCsum_2   ; Only one or less bytes
                inc  c

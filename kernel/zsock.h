@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: zsock.h,v 1.4 2002-05-13 20:00:48 dom Exp $
+ * $Id: zsock.h,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -48,15 +48,15 @@
 
 #include "config.h"
 
-#include "net/netstats.h"
-#include "net/tcpsock.h"
-#include "net/inet.h"
-#include "net/hton.h"
-#include "net/device.h"
+#include <net/netstats.h>
+#include <net/tcpsock.h>
+#include <net/inet.h>
+#include <net/hton.h>
+#include <net/device.h>
 #ifdef SCCZ80
-#include "net/zsockerrs.h"
+#include <net/zsockerrs.h>
 #endif
-#include "net/zsfiles.h"
+#include <net/zsfiles.h>
 
 #include "nfuncs.h"
 
@@ -86,6 +86,8 @@
 #define tcp_LONGTIMEOUT     20
 #define tcp_RETRANSMITTIME   5
 #define RETRAN_STRAT_TIME  100
+
+
 
 #define MAXVJSA	          5000   /* TCP VJ constants */
 #define MAXVJSD           1000
@@ -139,7 +141,7 @@ struct sys {
 	TCPSOCKET *commssocket;
 	int      (*usericmp)();	/* User ICMP (internal) */
 	int	   catchall;	/* Package code to catch all */
-	u8_t	   counter;	/* For rexmit loop */
+	u32_t	   timeout;	/* For rexmit loop */
 	u8_t	   pad;
 };
 

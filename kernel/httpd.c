@@ -31,21 +31,24 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: httpd.c,v 1.4 2002-05-13 21:53:03 dom Exp $
+ * $Id: httpd.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  * Dumb http server (won't work without alteration)
  */
 
 
 
+#ifndef SCCZ80
+#define strnicmp(a,b,c) strncasecmp(a,b,c)
+#endif
 
 #include "zsock.h"
 
-#define HTTPBUFSIZ      256
+#define HTTPBUFSIZ      1024
 
 char *FindMime(char *);
-int httpd(TCPSOCKET *, u8_t *, u16_t);
-int httpd2(TCPSOCKET *, u8_t *, u16_t);
+int httpd( u8_t *, u16_t,TCPSOCKET *);
+int httpd2( u8_t *, u16_t,TCPSOCKET *);
 
 
 char head[]=  "HTTP/0.9 200 OK\n\r" \
@@ -80,10 +83,7 @@ starthttpd()
 }
 
 
-int httpd(s,addr,len)
-        TCPSOCKET *s;
-        u8_t *addr;
-        u16_t len;
+int httpd(u8_t *addr,u16_t len,TCPSOCKET *s)
 {
     u8_t    *mimetype;
     u8_t    *filename;
@@ -152,10 +152,7 @@ getout:
  *      or closed..
  */
 
-int httpd2(s,addr,len)
-        TCPSOCKET *s;
-        u8_t *addr;
-        u16_t len;
+int httpd2(u8_t *addr,u16_t len,TCPSOCKET *s)
 {
     if      (addr) {
 	/* Sommat was acked, try sending again */
@@ -183,7 +180,7 @@ SendBlock(TCPSOCKET *s)
 
     blk->sent += sock_write(s,blk->buffer+blk->sent,blk->read-blk->sent);
     /* Not gonna send any more data... */
-    if (blk->read < HTTPBUFSIZ && blk->sent==blk->read ) {
+    if (blk->read < HTTPBUFSIZ && blk->sent == blk->read ) {
 	CloseHttpd(s);
 	sock_close(s);
 	return(1);

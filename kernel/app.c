@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: app.c,v 1.4 2002-05-13 20:00:48 dom Exp $
+ * $Id: app.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  *
  * Set up Z88 application structures
@@ -52,7 +52,7 @@
 #define HELP3	"This demo contains shared library facilities,"
 #define HELP4	"echo/qotd/finger services and a ping client"
 #define HELP5   ""
-#define HELP6   "v2.3 (c) xx/5/2002 D.J.Morris"
+#define HELP6   "v2.3 (c) 1/6/2002 D.J.Morris"
 
 #define APP_INFO "TCP Stack"
 #define APP_KEY  'S'

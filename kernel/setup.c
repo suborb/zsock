@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: setup.c,v 1.7 2002-05-14 22:41:41 dom Exp $
+ * $Id: setup.c,v 1.8 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -48,7 +48,7 @@
 #define HPSIZE 15000
 extern int process;
 
-#ifdef SCCZ80
+#ifdef __Z88__
 #pragma -zorg=32768
 #pragma -reqpag=1
 #pragma -defvars=16384
@@ -78,6 +78,10 @@ void Interrupt()
     u16_t	bind;
     void       *pkt;
     int         value;
+#ifdef __CPM__
+    static int  counter = 0;
+#endif
+    
 
     bind = PageDevIn();
     /* Read in some bytes and handle the packet */
@@ -89,11 +93,19 @@ void Interrupt()
 	pkt_free(pkt);
     PageDevOut(bind);
     /* Kludgey TCP timeout */
-    if ( --sysdata.counter == 0) {  
+#ifdef __CPM__
+    if ( ++counter == 250 ) {
+	counter = 0;
 	tcp_retransmit();
 	udp_check_timeouts();
-	sysdata.counter = 50;
     }
+#else
+    if ( chk_timeout(sysdata.timeout ) ) {
+	tcp_retransmit();
+	udp_check_timeouts();
+	sysdata.timeout = set_timeout(300);  /* Every 3 seconds */
+    }
+#endif
     loopback_recv();
 }
 
@@ -110,7 +122,7 @@ int StackInit(int readconfig)
 #endif
     sysdata.usericmp = 0;
     sysdata.mss = 512;
-#ifdef Z88
+#ifdef __Z88__
     if ( readconfig ) {
 	config_dns();            /* Read in DNS information */
 	sysdata.myip=defaultip;	
@@ -129,7 +141,7 @@ int StackInit(int readconfig)
     sysdata.overhead = 16;
     device = &z88slip;
 #endif
-    sysdata.counter = 50;
+    sysdata.timeout = 0;
     sysdata.debug   = 0;
     if ( device_attach(device) == FALSE )
 	return (1);  
@@ -172,7 +184,7 @@ UserConfig()
 		} else break;
 	}
 	putchar('\n');
-#ifdef Z88
+#ifdef __Z88__
 	printf("\nFilename of network device driver: ");
 	fgets_cons(buffer,39);
 	putchar('\n');

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: generic.c,v 1.4 2002-05-14 22:41:41 dom Exp $
+ * $Id: generic.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  * Cross platform routines
  */
@@ -39,6 +39,8 @@
 
 
 #include "zsock.h"
+
+#ifndef __CPM__
 #include <sys/time.h>
 
 /* Returns number of 10ms since start of day */
@@ -66,6 +68,19 @@ u32_t GetSeqNum()
 
     return ( tv.tv_usec );   /* Not great, but okay-ish */
 }
+#else
+/* Won't work */
+u32_t current_time()
+{
+    return 0;
+}
+
+u32_t GetSeqNum()
+{
+    return 0;
+}
+#endif
+
 
 
 /* I think this is correct... */
@@ -83,7 +98,6 @@ u16_t inet_cksum_pseudo(ip_header_t *ip,void *phdr,u8_t protocol,u16_t length)
     if ( ( acc += hacc ) < hacc )
 	++acc;
   
-    printf("cksum = %d\n", htons(~acc));
     return (~acc);
 
 }

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: nfuncs.h,v 1.3 2002-05-13 20:00:48 dom Exp $
+ * $Id: nfuncs.h,v 1.4 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -150,7 +150,7 @@ extern int        reverse_addr_lookup_i(ipaddr_t, char *);
 extern int __FASTCALL__  tcp_dataoffset(tcp_header_t *tp);
 extern void              icmp_fill_ping(char *ptr, u16_t len);
 extern u16_t             inet_cksum_pseudo(ip_header_t *ip,void *tcp,u8_t protocol,u16_t length);
-extern u16_t             ip_check_cksum(ip_header_t *buf);
+extern u16_t __FASTCALL__ ip_check_cksum(ip_header_t *buf);
 extern void __FASTCALL__ inet_cksum_set(ip_header_t *buf);
 extern u16_t             inet_cksum(void *buf,u16_t len);
 

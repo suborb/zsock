@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp_int.c,v 1.4 2002-05-13 20:00:48 dom Exp $
+ * $Id: tcp_int.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -114,7 +114,7 @@ static void service_udpecho(u8_t *addr,i16_t len,
 
 static int service_echo(u8_t *addr,u16_t code,TCPSOCKET *s) 
 {
-	//printk("Echo called: %d type=%d port =%d %d %d\n",s,s->ip_type,htons(s->hisport),addr,code);
+    // printf("Echo called: %d type=%d port =%d %d %d\n",s,s->ip_type,htons(s->hisport),addr,code);
     if ( addr && code ) {
 	sock_write_i(s,addr,code);
     }

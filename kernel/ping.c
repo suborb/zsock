@@ -69,14 +69,14 @@ void Ping()
 
     timeout = set_timeout(50);
     for (;;) {
-	if (chk_timeout(timeout) ) {
+	if (  chk_timeout(timeout) ) {
 	    timeout = set_timeout(100);
 	    if ( ping_send(addr,&ident) ) 
 		ident++;
 	    else
 		break;
 	} 
-#ifdef Z88
+#ifdef __Z88__
 	if (getk() == 27 ) break;
 #else
 	if ( ident == 4 )

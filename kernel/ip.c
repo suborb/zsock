@@ -1,7 +1,7 @@
 /*
  *      IP Routines for Small C+ Demo TCP stack
  *
- *      $Id: ip.c,v 1.4 2002-05-14 22:41:41 dom Exp $
+ *      $Id: ip.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  */
 
 
@@ -22,6 +22,7 @@ static ipaddr_t loopbackip = IP_ADDR(127,0,0,1);
 void PktRcvIP(void *buf,u16_t len)
 {
     ip_header_t *ip = buf;
+
     /* Check the IP version */
     if ( ((ip->version)&240) != 0x40 ) 
 	return;
@@ -67,7 +68,7 @@ void PktRcvIP(void *buf,u16_t len)
 	return;
     }
 
-#ifdef Z88
+#ifdef __Z88__
     if ( sysdata.catchall )
 	if (PackageCall(buf,len,sysdata.catchall) ) 
 	    return;
@@ -82,12 +83,12 @@ void PktRcvIP(void *buf,u16_t len)
 	tcp_handler(buf,len);
 	break;
 
-                case prot_ICMP:
+    case prot_ICMP:
 #ifdef NETSTAT
-		    ++netstats.icmp_recvd;
+	++netstats.icmp_recvd;
 #endif
-		    icmp_handler(buf,len);
-		    break;
+	icmp_handler(buf,len);
+	break;
 
     case prot_UDP:
 #ifdef NETSTAT
@@ -124,7 +125,6 @@ void ip_send(ip_header_t *ip,u16_t len,u8_t prot, u8_t ttl)
     ip->ttl      = ttl;
     inet_cksum_set(ip);   /* Check sum it */
     /* Have to located correct interface then checksum the packet */
-
 
     if (ip->dest == sysdata.myip || ip->dest == loopbackip ) {
 	loopback_send(ip,len);

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: udp.c,v 1.4 2002-05-13 20:00:48 dom Exp $
+ * $Id: udp.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -322,9 +322,10 @@ void udp_check_timeouts()
 /* Get a unique port for this protocol */
 int get_uniqport(void *t,tcpport_t *pick)
 {
-    int	p = ++(*pick);
+    tcpport_t p = (*pick)+1;
 
     while ( p != *pick ) {
+
 	if ( CheckPort(t,p) == 0 ) {
 	    *pick = p;
 	    return 0;
@@ -333,6 +334,7 @@ int get_uniqport(void *t,tcpport_t *pick)
 	if ( p < 1024 )
 	    p = 1024;
     }
+    return 1;
 }
 
 

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: config.h,v 1.6 2002-05-13 21:30:22 dom Exp $
+ * $Id: config.h,v 1.7 2002-06-01 21:43:18 dom Exp $
  *
  * Machine tweaking
  *
@@ -89,8 +89,11 @@ typedef int i32_t;
 #define fgets_cons(x,y) fgets(x,y,stdin);
 #else
 #define return_ncv(x)  return_nc(x)
-#define return_nc return_nc;
+#define return_nc return_nc
 #define GETKEY() getkey()
+#ifdef __CPM__
+#define getk()   0
+#endif
 
 #endif
 

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: handler_call.c,v 1.3 2002-05-13 20:00:48 dom Exp $
+ * $Id: handler_call.c,v 1.4 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -57,13 +57,16 @@ int Handler_Call(s)
 	pop	de	;socket
 	push	de	;put them back
 	push	bc
+#ifdef __Z88__
 	ld	hl,7	;offset to handler_type
 	add	hl,de
-#ifdef Z88
 	ld	a,(hl)
 	inc	hl	;go to handler address
 	and	a
 	jr	nz,do_ext_call
+#else
+	ld	hl,8	;offset to handler_call
+	add	hl,de
 #endif
 ; Internal Call - socket already in de
 	ld	a,(hl)
@@ -73,7 +76,7 @@ int Handler_Call(s)
 	jp	(hl)
 ; External package call additional offset of 2.
 .do_ext_call
-#ifdef Z88
+#ifdef __Z88__
 	ld	c,(hl)
 	inc	hl
 	ld	b,(hl)
@@ -105,7 +108,7 @@ PackageCall(rout)
 	pop	iy	;Packet ID to call
 	push	iy
 	push	hl
-#ifdef Z88
+#ifdef __Z88__
 	jr	ext_call_in
 #else
 	jp      (iy)

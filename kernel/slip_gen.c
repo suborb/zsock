@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: slip_gen.c,v 1.1 2002-05-14 22:41:41 dom Exp $
+ * $Id: slip_gen.c,v 1.2 2002-06-01 21:43:18 dom Exp $
  *
  */
 
@@ -137,7 +137,9 @@ struct pktdrive z88slip = {
 int SlipInit()
 {
     printf("initialising slip\n");
+#ifndef SCCZ80
     sock = open_terminal();
+#endif
     slip_outstate = inslipflag = online = 0;
     slipfirst = NULL;
     online = 1;
@@ -325,6 +327,7 @@ int inchar()
 }
 
 
+#ifndef SCCZ80
 static void sendchar(unsigned char ch)
 {
     write(sock,&ch,sizeof(unsigned char));
@@ -340,5 +343,22 @@ static int getinp()
     }
     return ch;
 }
+#endif
+
+#ifdef __CPM__
+static void sendchar(unsigned char ch)
+{
+    bdos(CPM_WPUN,ch);
+}
+
+
+static int getinp()
+{
+    unsigned char c = bdos(CPM_RRDR,0);
+    if ( c != 255 )
+	printf("Read %u\n",c);
+    return ( c );
+}
+#endif
 
 

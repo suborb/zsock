@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: icmp.c,v 1.5 2002-05-13 21:30:22 dom Exp $
+ * $Id: icmp.c,v 1.6 2002-06-01 21:43:18 dom Exp $
  *
  * ICMP Routines
  */
@@ -136,7 +136,7 @@ u32_t icmp_ping_pkt(ipaddr_t ipaddr,u32_t *unused,u16_t len)
 {
     u16_t	length;
     struct pktdef *pkt;
-#ifndef Z80
+#ifndef __Z88__
     u8_t   *ptr;
     u8_t    data;
 #endif
@@ -161,7 +161,7 @@ u32_t icmp_ping_pkt(ipaddr_t ipaddr,u32_t *unused,u16_t len)
     pkt->ip.length = htons(length);
     pkt->ip.source = sysdata.myip;
     pkt->ip.dest   = ipaddr;
-#ifdef Z80
+#ifdef __Z88__
     icmp_fill_ping(pkt->icmp.data,len);
 #else
     ptr = pkt->icmp.data;
@@ -196,6 +196,7 @@ void icmp_handler(void *buf,u16_t len)
     icmp = buf+ ((ip->version&15)*4);
 
     if ( inet_cksum(icmp,len) ) { 
+	printf("ICMP cksum = %u\n",inet_cksum(icmp,len));
 #ifdef NETSTAT
 	++netstats.icmp_badck;
 #endif

@@ -31,7 +31,7 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: socket.c,v 1.4 2002-05-13 20:00:48 dom Exp $
+ * $Id: socket.c,v 1.5 2002-06-01 21:43:18 dom Exp $
  *
  * API Routines
  */
@@ -42,7 +42,7 @@
 #include "zsock.h"
 
 /* Some sccz80 magic */
-#ifdef SCCZ80
+#ifdef __Z88__
 #ifdef OLDPACK
 #pragma -shareoffset=14
 #else

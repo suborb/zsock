@@ -31,21 +31,24 @@
  *
  * This file is part of the ZSock TCP/IP stack.
  *
- * $Id: tcp.c,v 1.7 2002-05-14 22:59:37 dom Exp $
+ * $Id: tcp.c,v 1.8 2002-06-01 21:43:18 dom Exp $
  *
  * [This code owes a debt to Waterloo TCP, just to let ya know!]
  */
 
-
-
 #include "zsock.h"
+
 
 /* Number of bytes offset into read buffer before we copy back */
 
 #define READ_FLUSH      256
 
 /* default size of the read/write buffers */
-#define BUF_SIZE        512
+#ifdef Z80
+#define BUF_SIZE        1024
+#else
+#define BUF_SIZE        4096
+#endif
 
 
 
@@ -92,11 +95,11 @@ static void tcp_set_sockvj(TCPSOCKET * s);
 static void tcp_unwind(TCPSOCKET * ds);
 static void tcp_sendsoon(TCPSOCKET * t);
 static void tcp_invalidate(TCPSOCKET * t);
-static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, u16_t len);
+static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, i16_t len);
 static void tcp_rst(ip_header_t * hisip, tcp_header_t * oldtp);
 static int min(int b, int a);
 
-static TCPSOCKET *tcp_new_buff_socket(u8_t flag);
+static TCPSOCKET *tcp_new_buff_socket();
 static TCPSOCKET *tcp_new_socket();
 static void tcp_signal_task(TCPSOCKET *, u8_t);
 
@@ -109,6 +112,10 @@ static void tcp_send(TCPSOCKET * s, int line);
 static void tcp_send(TCPSOCKET * s);
 #endif
 
+static int tcp_output(TCPSOCKET *s,u32_t seqnum, u32_t acknum, u8_t flags, u16_t window,
+		      void *payload, int payload_len,
+		      void *tcpopts, int tcpopts_len);
+
 
 /*
  *
@@ -120,6 +127,9 @@ void tcp_init()
     sysdata.tcpport = 1024;
     sysdata.tcpfirst = NULL;
     service_registertcp();
+#ifndef SCCZ80
+    starthttpd();
+#endif
 }
 
 /*
@@ -131,7 +141,7 @@ void tcp_init()
 static void tcp_signal_task(TCPSOCKET * s, u8_t signal)
 {
     if (s->datahandler) {
-#ifdef Z80
+#ifdef __Z88__
 	HCALL(0, signal, s);
 #else
 	s->datahandler(0,signal,s);
@@ -202,8 +212,10 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
 
 #if 1
     if (lport == 0) {
-	if (get_uniqport(&sysdata.tcpfirst, &sysdata.tcpport))
+	if (get_uniqport(sysdata.tcpfirst, &sysdata.tcpport))  {
+	    printf("No unique\n");
 	    return_c(EADDRINUSE,NULL);
+	}
 
 	lport = sysdata.tcpport;
     }
@@ -211,8 +223,10 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
     if (lport == 0)
 	lport = sysdata.tcpport++;
 #endif
-    if ((s = tcp_new_buff_socket(YES)) == 0)
+    if ((s = tcp_new_buff_socket()) == NULL) {
+	printf("buffer\n");
 	return_c(ENOMEM,NULL);	/* Find a new socket */
+    }
     s->state = tcp_stateSYNSENT;
     SetLONGtimeout(s);
     s->hisaddr = ipdest;
@@ -229,8 +243,9 @@ TCPSOCKET *tcp_open(ipaddr_t ipdest,
     return_ncv(s);
 }
 
-static void tcp_set_sockvj(TCPSOCKET * s)
+static void tcp_set_sockvj(TCPSOCKET * t)
 {
+    TCPSOCKET *s = t;
     s->mss = sysdata.mss;
     s->cwindow = 1;
     s->wwindow = 0;		/* Slow VJ algorithm */
@@ -250,7 +265,7 @@ TCPSOCKET *tcp_listen(ipaddr_t ipaddr,
     TCPSOCKET *s;
 
     if (lport == 0) {
-	if (get_uniqport(&sysdata.tcpfirst, &sysdata.tcpport))
+	if (get_uniqport(sysdata.tcpfirst, &sysdata.tcpport))
 	    return_c(EADDRINUSE,NULL);
 
 	lport = sysdata.tcpport;
@@ -316,6 +331,7 @@ void tcp_abort(TCPSOCKET * t)
 {
     TCPSOCKET *s = t;
 
+
     if (s->state != tcp_stateLISTEN && s->state != tcp_stateCLOSED) {
 	s->flags = tcp_flagRST | tcp_flagACK;
 	TCPSEND(s);
@@ -340,10 +356,11 @@ u16_t tcp_write(TCPSOCKET * s, void *dp, u16_t len)
 {
     int x;
 
+
     if (s->state != tcp_stateESTAB)
 	return (0);
 
-    if (s->sendbuff == 0)
+    if (s->sendbuff == NULL)
 	return (0);
 
     if (len > (x = s->sendsize - s->sendoffs))
@@ -352,8 +369,10 @@ u16_t tcp_write(TCPSOCKET * s, void *dp, u16_t len)
     if (len) {
 	memcpy(s->sendbuff + s->sendoffs, dp, len);
 	s->sendoffs += len;
+#if 0
 	if (s->sendoffs >= FLUSHLIM)
 	    tcp_flush(s);
+#endif
     }
     return (len);
 }
@@ -552,8 +571,8 @@ static void tcp_invalidate(TCPSOCKET * t)
     s->ip_type = BADIPTYPE;
     free(s->recvbuff);
     free(s->sendbuff);
-    s->recvbuff = 0;
-    s->sendbuff = 0;
+    s->recvbuff = NULL;
+    s->sendbuff = NULL;
     free(s);
 }
 
@@ -778,7 +797,9 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 		s->rtt_time = scheduleto;
 	}
     }
-
+#ifdef DEBUGTCP
+    printf("Received flags %d len = %d state = %d\n",tp->flags,len,s->state);
+#endif
 
     switch (s->state) {
 
@@ -793,8 +814,9 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	    if (s->hisaddr == ip->source) {
 		n = s;
 	    } else {
-		if ((n = tcp_new_buff_socket(flags)) == 0)
+		if ((n = tcp_new_buff_socket()) == NULL) {
 		    return;
+		}
 	    }
 #ifdef NETSTAT
 	    ++netstats.tcp_connaccs;
@@ -805,9 +827,13 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	    n->myaddr = ip->dest;
 	    n->tos = ip->tos;	/* Pick up TOS */
 	    n->myport = s->myport;
+
 	    n->flags = tcp_flagSYN | tcp_flagACK;
+
 	    n->datahandler = s->datahandler;
+	    n->handlertype = s->handlertype;
 	    tcp_set_sockvj(n);
+	    tcp_parse_options(n,tp);
 	    TCPSEND(n);
 	    n->state = tcp_stateSYNREC;
 	    n->unhappy = TRUE;
@@ -834,12 +860,13 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 		 * should be any...
 		 */
 		if (s->datahandler) {
-#ifdef Z80
+#ifdef __Z88__
 		    HCALL(0, handler_OPEN, s);
 #else
 		    s->datahandler(0,handler_OPEN, s);
 #endif
 		}
+		tcp_parse_options(s,tp);
 		tcp_processdata(s, tp, len);
 		s->unhappy = FALSE;
 		TCPSEND(s);
@@ -861,7 +888,7 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	}
 	if ((flags & tcp_flagACK) && tp->acknum == (s->seqnum + 1)) {
 	    /* This is quite kludgey but it works... */
-	    s->window = min(htons(tp->window), tcp_MAXDATA * 2);
+	    s->window = BUF_SIZE;
 	    s->flags = tcp_flagACK;
 	    ++s->seqnum;
 #ifdef NETSTAT
@@ -871,7 +898,7 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	    SetTIMEOUTtime(s);
 	    s->unhappy = FALSE;
 	    if (s->datahandler) {
-#ifdef z80
+#ifdef __Z88__
 		HCALL(0, handler_OPEN, s);
 #else
 		s->datahandler(0, handler_OPEN, s);
@@ -888,109 +915,34 @@ void tcp_handler(ip_header_t * ip, u16_t length)
     case tcp_stateESTCL:
     case tcp_stateCLOSEWT:
 
-	/* Handle lost syn */
-	if ((flags & tcp_flagSYN) && (flags & tcp_flagACK)) {
-	    TCPSEND(s);
-	    return;
-	}
-
 	if ((flags & tcp_flagACK) == 0)
 	    return;		/* must ack sommat */
-
-#if 0
-	/* Logically this can't happen */
-	if (flags & tcp_flagSYN) {  
-	    tcp_rst(ip, tp);
-	    return;
-	}
-#endif
-
-	diff = tp->acknum - s->seqnum;
-	if (diff > 0 && diff <= s->sendoffs) {
-	    s->sendoffs -= diff;
-	    s->unacked -= diff;
-	    if (s->sendoffs < 0)
-		s->sendoffs = 0;
-	    memcpy(s->sendbuff, diff + s->sendbuff, s->sendoffs);
-	    s->seqnum += diff;
-	} else {
-	    /* handler condfused so set unacked to 0 */
-	    s->unacked = 0;
-	}
-	if (s->unacked < 0)
-	    s->unacked = 0;
-
-	s->flags = tcp_flagACK;
 
 	tcp_processdata(s, tp, len);
 
 
-	if ((flags & tcp_flagFIN)
-	    && (s->state != tcp_stateCLOSEWT)
-	    /* && ( s->acknum == tp->seqnum) && s->sendoffs==0 */
-	    ) {
-	    s->acknum++;
+	if ( flags & tcp_flagFIN ) {
+	    if ( s->state != tcp_stateCLOSEWT )
+		s->acknum++;
 	    s->state = tcp_stateCLOSEWT;
 	    TCPSEND(s);
-	    s->state = tcp_stateLASTACK;
-	    s->flags |= tcp_flagFIN;
-	    s->unhappy = TRUE;
+	    s->unhappy = FALSE;
 	}
-	if ((diff > 0 && s->sendoffs) || len > 0) {
-	    /* Update window...how urgent? */
-	    if ((diff > 0 && s->sendoffs) || (len > 0))
-		TCPSEND(s);
-	    else
-		tcp_sendsoon(s);
-	}
+
+
+
 	if (s->state == tcp_stateESTCL)
 	    tcp_close(s);
 
 	return;
 
     case tcp_stateFINWT1:
-	/* They have not necessarily read all the data yet - supply as needed */
 
-	diff = tp->acknum - s->seqnum;
-
-	if (diff > 0 && diff <= s->sendoffs) {
-	    s->sendoffs -= diff;
-	    s->unacked -= diff;
-	    if (s->sendoffs < 0)
-		s->sendoffs = 0;
-	    memcpy(s->sendbuff, diff + s->sendbuff, s->sendoffs);
-	    s->seqnum += diff;
-	    if (diff == 0 && s->unacked < 0)
-		s->unacked = 0;
-	}
-
-	/* They might still be transmitting, we must read it! */
 	tcp_processdata(s, tp, len);
 
 	/* Check if other tcp has acked all sent data and can change states */
 
-	if ((flags & (tcp_flagFIN | tcp_flagACK)) ==
-	    (tcp_flagFIN | tcp_flagACK)) {
-#ifdef ARCHAIC
-	    /* Trying to do simultaenous close */
-	    if ((tp->acknum >= (s->seqnum + 1))
-		&& (tp->seqnum == s->acknum)) {
-		s->seqnum++;
-		s->acknum++;
-		s->flags = tcp_flagACK;
-		TCPSEND(s);
-		s->unhappy = FALSE;
-		SetTIMEOUTtime(s);
-		s->state = tcp_stateCLOSED;
-		if (s->datahandler) {
-#ifdef Z80
-		    HCALL(0, handler_CLOSED, s);
-#else
-		    s->datahandler(0, handler_CLOSED, s);
-#endif
-		}
-	    }
-#else
+	if ((flags & (tcp_flagFIN | tcp_flagACK)) == (tcp_flagFIN | tcp_flagACK)) {
 	    if (tp->seqnum == s->acknum) {
 		s->acknum++;	/* ack their FIN */
 		if (tp->acknum >= (s->seqnum + 1)) {
@@ -1009,13 +961,10 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 		else
 		    SetTIMEOUTtime(s);
 	    }
-#endif
 	} else if (flags & tcp_flagACK) {
 	    /* Other side is legitamately acking us */
-	    if ((tp->acknum == (s->seqnum + 1))
-		&& (tp->seqnum == s->acknum) && (s->sendoffs == 0)) {
+	    if ((tp->acknum == (s->seqnum + 1)) && (tp->seqnum == s->acknum) && (s->sendoffs == 0)) {
 		s->seqnum++;
-		//          s->acknum++;
 		s->state = tcp_stateFINWT2;
 		SetTIMEOUTtime(s);
 		s->unhappy = FALSE;
@@ -1028,22 +977,17 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	/* They may be still transmitting data, must read it */
 	tcp_processdata(s, tp, len);
 
-	if ((flags & (tcp_flagACK | tcp_flagFIN)) ==
-	    (tcp_flagACK | tcp_flagFIN)) {
+	if ((flags & (tcp_flagACK | tcp_flagFIN)) == (tcp_flagACK | tcp_flagFIN)) {
 	    if ((tp->acknum == s->seqnum) && (tp->seqnum == s->acknum)) {
 		s->flags = tcp_flagACK;
 		s->acknum++;
 		TCPSEND(s);
 		s->unhappy = FALSE;
-#ifdef ARCHAIC
-		SetTIMEOUTtime(s);
-		s->state = tcp_stateCLOSED;
-#else
+
 		s->state = tcp_stateTIMEWT;
 		SetLONGtimeout(s);
-#endif
 		if (s->datahandler) {
-#ifdef Z80
+#ifdef __Z88__
 		    HCALL(0, handler_CLOSED, s);
 #else
 		    s->datahandler(0, handler_CLOSED, s);
@@ -1057,9 +1001,9 @@ void tcp_handler(ip_header_t * ip, u16_t length)
     case tcp_stateCLOSING:
 	if ((flags & (tcp_flagACK | tcp_flagFIN)) == tcp_flagACK) {
 	    /* 8/12/99 seqnum+1 seqnum++ change */
-	    if ((tp->acknum == (s->seqnum + 1)) &&
+	    if ((tp->acknum == (s->seqnum /* + 1*/)) &&
 		(tp->seqnum == s->acknum)) {
-		s->seqnum++;
+		//s->seqnum++;
 		s->state = tcp_stateTIMEWT;
 		SetTIMEOUTtime(s);
 		s->unhappy = FALSE;
@@ -1078,41 +1022,58 @@ void tcp_handler(ip_header_t * ip, u16_t length)
 	    return;
 	} else {
 	    if (tp->acknum == (s->seqnum + 1) && (tp->seqnum == s->acknum)) {
-		if (s->datahandler) {
-#ifdef Z80
-		    HCALL(0, handler_CLOSED, s);
-#else
-		    s->datahandler(0, handler_CLOSED, s);
-#endif
-		}
 		s->state = tcp_stateCLOSED;	/*no 2msl need */
-		s->unhappy = FALSE;
+		tcp_signal_task(s,handler_CLOSED);  /* Close it up immediately */
 		return;
 	    }
 	}
 	break;
 
     case tcp_stateTIMEWT:
-	if (flags & (tcp_flagACK | tcp_flagFIN) ==
-	    (tcp_flagACK | tcp_flagFIN)) {
+	if (flags & (tcp_flagACK | tcp_flagFIN) == (tcp_flagACK | tcp_flagFIN)) {
 	    /* he needs an ack */
 	    s->flags = tcp_flagACK;
 	    TCPSEND(s);
 	    s->unhappy = FALSE;
-	    if (s->datahandler) {
-#ifdef Z80
-		HCALL(0, handler_CLOSED, s);
-#else
-		s->datahandler(0, handler_CLOSED, s);
-#endif
-	    }
-	    s->state = tcp_stateCLOSED;
+	    s->state = tcp_stateCLOSED;         /* Might this be bad so soon after an ACK? */
+	    tcp_signal_task(s,handler_CLOSED);  /* Close it up immediately */
 	}
 	break;
 
     }
     if (s->unhappy)
 	tcp_sendsoon(s);
+}
+
+
+/* Extract the mss out of the TCP header */
+void tcp_parse_options(TCPSOCKET *s, tcp_header_t *tp)
+{
+    u16_t  opt_temp;
+    u8_t  *options;
+    u16_t  numoptions;
+
+ 
+    if ((numoptions = (( tp->offset & 0xf0 ) >> 2 ) - sizeof(struct tcp_header))) {
+        options = ((u8_t *) tp ) + sizeof(struct tcp_header);
+        while (numoptions--) {
+            switch (*options++) {
+            case 0:             /* End of options */
+                numoptions = 0;
+            case 1:             /* NOP */
+                break;
+            case 2:             /* mss */
+                if (*options == 4) {
+                    opt_temp = htons(*(u16_t *)(options+1) );
+                    if (opt_temp < s->mss)
+                        s->mss = opt_temp;
+                }
+            default:
+                numoptions -= (*options - 1);
+                options += (*options - 1);
+            }
+        }
+    }
 }
 
 
@@ -1128,61 +1089,58 @@ void tcp_handler(ip_header_t * ip, u16_t length)
  * we get out of order data - the other TCP will resend
  */
 
-static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, u16_t len)
+static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, i16_t len)
 {
     u16_t *options, numoptions;
-    signed int diff;
+    i16_t diff;
     u16_t x;
     u8_t *dp;
 
+    diff = tp->acknum - s->seqnum;
+    if (diff >= 0 && diff <= s->sendoffs) {
+	s->sendoffs -= diff;
+	s->unacked -= diff;
+	if (s->sendoffs < 0)
+	    s->sendoffs = 0;
+	memcpy(s->sendbuff, diff + s->sendbuff, s->sendoffs);
+	s->seqnum += diff;
+    } else {
+	/* handler condfused so set unacked to 0 */
+	s->unacked = 0;
+    }
+    if (s->unacked < 0)
+	s->unacked = 0;
 
-    /* FIXME: Dodgy window calculations - this is quite kludgey but it works... */
-    s->window = min(htons(tp->window), tcp_MAXDATA * 2);
+
+
 
     diff = s->acknum - tp->seqnum;
     if (tp->flags & tcp_flagSYN)
 	--diff;
+    
+
     dp = (void *)tp;
 
     x = ( tp->offset & 0xf0 ) >> 2;  /* Obtain the length of the TCP header */
     dp += x;
     len -= x;
+    
 
-#ifdef TCPOPTIONS
-/* Process TCP options */
 
-    if ((numoptions = x - sizeof(struct tcp_header))) {
-	options = (u8_t *) tp + sizeof(struct tcp_header);
-	while (numoptions--) {
-	    switch (*options++) {
-	    case 0:		/* End of options */
-		numoptions = 0;
-	    case 1:		/* NOP */
-		break;
-	    case 2:		/* mss */
-		if (*options == 4) {
-		    opt_temp = htons(options[1]);
-		    if (opt_temp < s->mss)
-			s->mss = opt_temp;
-		}
-	    default:
-		numoptions -= (*options - 1);
-		options += (*options - 1);
-	    }
-	}
-    }
-#endif
-    if (diff >= 0) {
+    len -= diff;
+    if (len >= 0) {
 	dp += diff;
-	len -= diff;
+	//len -= diff;
 #ifdef NETSTAT
 	netstats.tcp_recvdlen += len;
 #endif
-	if (s->datahandler) {
-#ifdef Z80
+	if (s->datahandler) {	 
+#ifdef __Z88__
 	    s->acknum += HCALL(dp, len, s);
 #else
-	    s->acknum += s->datahandler(dp, len, s);
+	    x = s->datahandler(dp, len, s);
+	    s->acknum += x;
+
 #endif
 	} else {
 	    /* No datahandler installed - i.e. user app, dump to a buffer
@@ -1198,6 +1156,13 @@ static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, u16_t len)
 	    }
 	}
     }
+
+
+    if ( s->sendoffs || ( s->unacked == 0 && s->state == tcp_stateCLOSEWT ) ) {
+	TCPSEND(s);
+    }
+
+
     s->unhappy = ((s->sendoffs) ? TRUE : FALSE);
     if (diff == 0 & s->unacked && chk_timeout(s->rtt_lasttran))
 	s->unacked = 0;
@@ -1205,6 +1170,8 @@ static void tcp_processdata(TCPSOCKET * s, tcp_header_t * tp, u16_t len)
 	tcp_sendsoon(s);
     SetTIMEOUTtime(s);
 }
+
+
 
 /*
  * Format and send an outgoing segment
@@ -1215,28 +1182,13 @@ static void tcp_send(TCPSOCKET * s, int line)
 static void tcp_send(TCPSOCKET * s)
 #endif
 {
+    u32_t optdata;
     int senddata, startdata, sendtotdata, sendtotlen;
     int i;
     u8_t *dp;
-    struct pktdef {
-	ip_header_t ip;
-	tcp_header_t tcp;
-	u16_t maxsegopt;
-	u16_t maxsegopt2;
-    } *pkt;
+  
 
 
-#ifdef SIMPLE
-    if (s->karn_count != 2 || s->cwindow == 1) {
-	/* FIXME please!! TCP options! */
-	if ((senddata = (s->sendoffs - s->unacked)) < 0)
-	    senddata = 0;
-	startdata = s->unacked;
-    } else {
-	senddata = s->sendoffs;
-	startdata = 0;
-    }
-#endif
 
 
     if (s->karn_count != 2) {
@@ -1256,59 +1208,26 @@ static void tcp_send(TCPSOCKET * s)
     for (i = 0; i < s->cwindow; i++) {
 	senddata = min(sendtotdata, s->mss);
 
-	if ((pkt = pkt_alloc(sizeof(struct pktdef) + senddata)) == NULL)
+	if ( s->flags & tcp_flagSYN ) {
+	    optdata = htonl( 2UL << 24  | 4UL << 16 )| htonl((u32_t)(s->mss));
+
+	    tcp_output(s,s->seqnum,s->acknum,s->flags,s->window,NULL,0,&optdata,4);
 	    return;
-
+	}
+	if ( s->state == tcp_stateCLOSEWT && s->unacked == 0 ) {
 #ifdef DEBUGTCP
-	printf("Sending data of size %d flags %d st %d line %d \n",
-	       senddata, s->flags, s->state, line);
-
+	    printf("i = %d line = %d\n",i,line);
 #endif
-	dp = (void *)&pkt->maxsegopt;
-
-	pkt->ip.length =
-	    sizeof(struct ip_header) + sizeof(struct tcp_header);
-
-	// printf("TCP window is %d\n",s->window);
-	/* tcp header */
-	pkt->tcp.srcport = s->myport;
-	pkt->tcp.dstport = s->hisport;
-	pkt->tcp.seqnum = htonl(s->seqnum);
-	pkt->tcp.acknum = htonl(s->acknum);
-	pkt->tcp.window = htons(512);	// htons(s->window)
-	pkt->tcp.flags = s->flags;
-	pkt->tcp.cksum = 0;
-	pkt->tcp.urgptr = 0;
-	/* Syn can't carry data */
-	if (s->flags & tcp_flagSYN) {
-	    pkt->tcp.offset = 6 * 16;
-	    pkt->ip.length += 4;
-	    pkt->maxsegopt = htons(512 + 4);
-	    pkt->maxsegopt2 = htons(s->mss);
+	    tcp_output(s,s->seqnum,s->acknum,s->flags|tcp_flagFIN,s->window,NULL,0,NULL,0);
+	    s->state = tcp_stateLASTACK;
+	    return;
 	} else {
-	    /* We can have data! */
-	    pkt->tcp.offset = 5 * 16;
-	    if (senddata) {
-		pkt->ip.length += senddata;
-		memcpy(dp, s->sendbuff + startdata, senddata);
-	    }
+#ifdef DEBUGTCP
+	    printf("i = %d line = %d\n",i,line);
+#endif
+	    tcp_output(s,s->seqnum+startdata,s->acknum,s->flags,s->window,s->sendbuff + startdata,senddata,NULL,0);
 	}
 
-
-	pkt->ip.source = s->myaddr;
-	pkt->ip.dest = s->hisaddr;
-	/* Reverse the length to big endian */
-	pkt->ip.length = htons(pkt->ip.length);
-#ifdef NETSTAT
-	++netstats.tcp_sent;
-	netstats.tcp_sentlen += senddata;
-#endif
-	pkt->tcp.cksum =
-	    inet_cksum_pseudo(&pkt->ip, &pkt->tcp,  prot_TCP,
-			(ntohs(pkt->ip.length) -
-			 sizeof(ip_header_t)));
-
-        ip_send((ip_header_t *) pkt, ntohs(pkt->ip.length),prot_TCP,s->ttl);
 	sendtotlen += senddata;
 	sendtotdata -= senddata;
 	startdata += senddata;
@@ -1329,6 +1248,8 @@ static void tcp_send(TCPSOCKET * s)
 	    s->vj_last = set_ttimeout(0);
 	s->karn_count = 0;
     }
+   
+	
     s->rtt_time = set_ttimeout(s->rto + 2);
     if (sendtotlen > 0)
 	s->rtt_lasttran = s->rtt_time + s->rto;
@@ -1340,60 +1261,102 @@ static void tcp_send(TCPSOCKET * s)
 
 static void tcp_rst(ip_header_t *hisip, tcp_header_t *oldtp)
 {
+    TCPSOCKET  s;
     u8_t oldflags;
     struct pktdef2 {
-	ip_header_t   ip;
-	tcp_header_t  tcp;
+        ip_header_t   ip;
+        tcp_header_t  tcp;
     } *pkt;
 
     oldflags = oldtp->flags;
     if (oldflags & tcp_flagRST)
-	return;
+        return;
 
     if (oldflags & tcp_flagACK) {
-	oldtp->seqnum = oldtp->acknum;
-	oldtp->acknum = 0;
+        oldtp->seqnum = oldtp->acknum;
+        oldtp->acknum = 0;
     } else {
-	oldtp->acknum =
-	    oldtp->seqnum + (htons(hisip->length) -
-			     ((hisip->version & 15) * 4));
-	oldtp->seqnum = 0;
+#if 0
+        oldtp->acknum =
+            oldtp->seqnum + (htons(hisip->length) -
+                             ((hisip->version & 15) * 4));
+#else
+	if ( oldtp->flags & tcp_flagSYN )
+	    oldtp->seqnum++;
+	oldtp->acknum = oldtp->seqnum;
+#endif
+        oldtp->seqnum = 0;
     }
 
+    s.myport  = oldtp->dstport;
+    s.hisport = oldtp->srcport;
+    s.myaddr  = hisip->dest;
+    s.hisaddr = hisip->source;
 
-
-    if ((pkt = pkt_alloc(sizeof(struct pktdef2))) == NULL)
-	return;
-
-
-    /* tcp header */
-    pkt->tcp.srcport = oldtp->dstport;
-    pkt->tcp.dstport = oldtp->srcport;
-    pkt->tcp.seqnum = htonl(oldtp->seqnum);
-    pkt->tcp.acknum = htonl(oldtp->acknum);
-    pkt->tcp.window = 0;
-    pkt->tcp.offset = 5 * 16;
-    pkt->tcp.flags = tcp_flagRST;
-    pkt->tcp.cksum = 0;
-    pkt->tcp.urgptr = 0;
-
-    /* internet header - just go with default TTL/tos */
-    pkt->ip.source = hisip->dest;
-    pkt->ip.dest = hisip->source;
-    pkt->ip.length = htons(sizeof(struct pktdef2));
-
-
-/*
- * Do the TCP Checksum, length is always going to be 20 (TCP header)
- */
-    pkt->tcp.cksum = inet_cksum_pseudo(&pkt->ip, &pkt->tcp, prot_TCP, sizeof(struct tcp_header));
+    if ( tcp_output(&s,oldtp->seqnum,oldtp->acknum,tcp_flagACK|tcp_flagRST,0,NULL,0,NULL,0) == 0 ) {
 #ifdef NETSTAT
-    ++netstats.tcp_rstsent;
+        ++netstats.tcp_rstsent;
+#endif
+    }
+    return;
+}
+
+
+
+
+/* Send a packet out - used by all output routines */
+static int tcp_output(TCPSOCKET *s,u32_t seqnum, u32_t acknum, u8_t flags, u16_t window,
+		      void *payload, int payload_len,
+		      void *tcpopts, int tcpopts_len)
+{
+    u16_t   len;
+    struct ptkdef {
+        ip_header_t   ip;
+        tcp_header_t  tcp;
+	char          payload;
+    } *pkt;
+
+    len =  sizeof(ip_header_t) + sizeof(tcp_header_t) + payload_len + tcpopts_len;
+
+    if ( ( pkt = pkt_alloc(len ) ) == NULL )
+        return -1;
+
+    pkt->ip.length   = htons(len);
+    pkt->ip.source   = s->myaddr;
+    pkt->ip.dest     = s->hisaddr;
+
+    pkt->tcp.srcport = s->myport;
+    pkt->tcp.dstport = s->hisport;
+    pkt->tcp.seqnum  = htonl(seqnum);
+    pkt->tcp.acknum  = htonl(acknum);
+    pkt->tcp.flags   = flags;
+    pkt->tcp.urgptr  = 0;
+    pkt->tcp.cksum   = 0;
+    pkt->tcp.window  = htons(window);
+    
+    pkt->tcp.offset  = (5 << 4 ) + ( tcpopts_len << 2 );
+
+    /* Copy tcp options if present */
+    memcpy(&pkt->payload,tcpopts,tcpopts_len);
+
+    /* Copy the data */
+    memcpy(&pkt->payload + tcpopts_len,payload,payload_len);
+
+
+
+#ifdef DEBUGTCP
+    printf("Sending packet of length %d flags %d\n",len,flags);
 #endif
 
-    ip_send((ip_header_t *) pkt, sizeof(struct pktdef2),prot_TCP,255);
-
+    /* Checksum */
+    pkt->tcp.cksum   = inet_cksum_pseudo(&pkt->ip, &pkt->tcp,  prot_TCP,
+                                         (len - sizeof(ip_header_t)));
+    ip_send((ip_header_t *) pkt, len,prot_TCP,s->ttl);
+    return 0;
 }
+
+
+
 
 /*
  *
@@ -1410,13 +1373,13 @@ static void tcp_rst(ip_header_t *hisip, tcp_header_t *oldtp)
  * already has a handle to it)
  */
 
-static TCPSOCKET *tcp_new_buff_socket(u8_t flag)
+static TCPSOCKET *tcp_new_buff_socket()
 {
     void *ptr;
     TCPSOCKET *s;
 
     /* Find a new socket, return NULL if we have no mem */
-    if (flag && (s = tcp_new_socket()) == NULL)
+    if ( (s = tcp_new_socket()) == NULL)
 	return (NULL);
 /*
  * Now, set up some buffers for us..all variables are initialised by
