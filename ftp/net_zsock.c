@@ -31,6 +31,8 @@ int net_open_ctrl(char *hostname, tcpport_t port)
 	printf("Connected to %s:%d\n",hostname,port);
     } else {
 	printf("Connection refused by %s:%d\n",hostname,port);
+	net_close_fd(ftpctrl_fd);
+	return -1;
     }
 
     if ( sock_getinfo(ftpctrl_fd,&info) != 0 ) {
@@ -38,6 +40,7 @@ int net_open_ctrl(char *hostname, tcpport_t port)
 	return -1;
     }
     client_addr = info.local_addr;
+
     
     return 0;
 }
@@ -49,12 +52,13 @@ tcpsock_t net_connect_ip(ipaddr_t addr, tcpport_t port)
     if ( ( ret = sock_open(addr,port,0,prot_TCP) ) == 0 ) {
 	return -1;
     }
-
-    if ( sock_waitopen(ret) == - 1 ) {
+    switch ( sock_waitopen(ret ) ) {
+    case 1:
+	return ret;
+    default:
 	net_close_fd(ret);
 	return -1;
     }
-    return ret;
 }
 
 
@@ -67,6 +71,8 @@ int net_close_ctrl()
 
 int net_close_fd(tcpsock_t sock)
 {
+    if ( sock == -1 )
+	return;
     sock_close(sock);
     if ( sock_waitclose(sock) == -1 )
 	return -1;
@@ -77,7 +83,7 @@ int net_close_fd(tcpsock_t sock)
 /* Wait for a listening socket to connect */
 int net_wait_connect(tcpsock_t sock)
 {
-    if ( sock_waitclose(sock) == -1 ) {
+    if ( sock_waitopen(sock) == -1 ) {
 	net_close_fd(sock);
 	return -1;
     }
@@ -89,7 +95,8 @@ int net_wait_connect(tcpsock_t sock)
 /* Send a line to the ctrl fd */
 int net_sendline(char *buf)
 {
-    sock_write(ftpctrl_fd,buf,strlen(buf));
+    net_write(ftpctrl_fd,buf,strlen(buf));
+    sock_flush(ftpctrl_fd);
 
 }
 
@@ -109,13 +116,42 @@ int net_listen()
 
 int net_read(tcpsock_t fd, char *buf, int buflen)
 {
-    return ( sock_read(fd,buf,buflen) );
+    int  closed = 0;
+
+
+    while ( sock_dataready(fd) == 0 ) {
+	if ( closed )
+	    return 0;
+	if ( getk() == 27 )
+	    return -1;
+#ifdef SCCZ80
+	GoTCP();
+#else
+	BUSYINT();
+#endif
+	closed = sock_closed(fd);
+    }
+    return(sock_read(fd,buf,buflen));
+  
 }
 
 
 int net_write(tcpsock_t fd, char *buf, int buflen)
 {
-    return ( sock_write(fd,buf,buflen) );
+    int offs = 0;
+
+    while ( ( offs += sock_write(fd,buf+offs,buflen-offs) ) != buflen ) {
+	getk();
+#ifdef SCCZ80
+	GoTCP();
+#else
+	BUSYINT();
+#endif
+	if ( sock_closed(fd) )
+	    return 0;
+    }
+
+    return offs;
 }
 
 int net_getsockinfo(ipaddr_t *addr, tcpport_t *port)
@@ -127,7 +163,7 @@ int net_getsockinfo(ipaddr_t *addr, tcpport_t *port)
 	return -1;
     }
 
-    *addr = info.local_addr;
+    *addr = client_addr;
     *port = info.local_port;
     return 0;
 }
@@ -146,7 +182,6 @@ int net_getsockinfo(ipaddr_t *addr, tcpport_t *port)
 
 char *net_readline(int sock)
 {
-    static char buf[512];
     static int  pos = 0;
     static int  len = 0;
     int         start,offset,readflag;
@@ -161,32 +196,34 @@ char *net_readline(int sock)
 
     while ( 1 ) {
         if ( readflag ) {
-            offset = sock_read(sock,buf+pos,sizeof(buf) - pos - 1 );
-            if ( offset <= 0 )
-                return NULL;
+            offset = net_read(sock,spare+len,100 - len - 1 );
+            if ( offset <= 0 ) {
+		return NULL;	
+	    }
             len += offset;
-
         }
 
+	if ( spare[pos] == LF )
+	    ++pos;
         start = pos;
-        while ( buf[pos] != '\r' && buf[pos] != '\n' && pos < len )
+        while ( spare[pos] != CR && pos < len )
             ++pos;
 
         if ( pos == len ) {
-            len -= start;
-            memcpy(buf,buf+start,len);
+            memcpy(spare,spare+start,pos-start);
+	    len -= start;
             pos = 0;
             readflag = 1;
             continue;
         }
         /* We now have a line */
-        buf[pos] = 0;
-        pos += 2;
+        spare[pos] = 0;
+        ++pos;
         if ( pos >= len ) {
             len = 0;
             pos = 0;
         }
-        return buf + start;
+        return spare + start;
     }
     return NULL;
 }
@@ -199,7 +236,44 @@ int net_getline(char *buf, int len)
 
     if ( ptr == NULL ) {
         buf[0] = 0;
+	return -1;
     } else {      /* Hope it's shorter than what we ask for.. */
         strncpy(buf,ptr,len);
     }
+    return 0;
 }
+
+#ifdef SCCZ80
+int fgets_net(unsigned char *str, int max, int echo)
+{
+   unsigned char c;
+   int ptr;
+   ptr=0;
+
+   while (1) {
+      c = getk();
+      GoTCP();
+      if ( c == 0 )
+	  continue;
+      if (c == '\n' || c == '\r' || ptr == max-1) {
+	  fputc_cons('\n');
+	  return ptr;
+      }
+      if (c == 127 ) {
+         str[--ptr] = 0;
+	 if ( echo ) {
+	     fputc_cons(8);
+	     fputc_cons(32);
+	     fputc_cons(8);
+	 }
+      }
+      else {
+         str[ptr++] = c;
+         str[ptr] = 0;
+	 if ( echo ) {
+	     fputc_cons(c);
+	 }
+      }
+   }
+}
+#endif

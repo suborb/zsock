@@ -1,9 +1,12 @@
 #include "ftp.h"
 
-
-char input_buffer[160];
+/* Put all the data together */
 
 char file_buffer[1024];
+char buffer[160];
+char input_buffer[160];
+char spare[100];
+
 
 int  hash;
 
@@ -13,7 +16,8 @@ int ftp_returncode()
     int   res;
 
     while ( 1 ) {
-	net_getline(input_buffer,sizeof(input_buffer));
+	if ( net_getline(input_buffer,sizeof(input_buffer)) == -1 )
+	    return -1;
 	fputs(input_buffer,stdout);
 	fputc('\n',stdout);
 	strncpy(result,input_buffer,4);
@@ -45,7 +49,7 @@ int ftp_data(char *buf, int direction, FILE *fp)
     int	      i;
   
     if ( passive ) {
-	ret = ftp_send("PASV\r\n");
+	ret = ftp_send("PASV"CRLF);
 	if ( ret != 227 )
 	    return ret;
 	ptr = input_buffer;
@@ -80,7 +84,7 @@ int ftp_data(char *buf, int direction, FILE *fp)
 #define lobyte(x)       ((x) & 0xff)
 	ftpdata_fd = net_listen();
 	net_getsockinfo(&dest,&port);
-	sprintf(activebuf,"PORT %u,%u,%u,%u,%u,%u\r\n",
+	sprintf(activebuf,"PORT %u,%u,%u,%u,%u,%u"CRLF,
 		hibyte(hiword(ntohl(dest))), lobyte(hiword(ntohl(dest))),
 		hibyte(loword(ntohl(dest))), lobyte(loword(ntohl(dest))),
 		hibyte(ntohs(port)), lobyte(ntohs(port)));
@@ -93,8 +97,8 @@ int ftp_data(char *buf, int direction, FILE *fp)
     ret = ftp_send(buf);
     if ( passive || ret == 125 || ret == 150 ) {         /* 150 opening ascii connection 125 = data conn already open */
 	if ( !passive ) {
-	    if ( net_wait_connect() == -1 ) {
-		printf("Child listener timed out");
+	    if ( net_wait_connect(ftpdata_fd) == -1 ) {
+		printf("Connect failed\n");
 		net_close_fd(ftpdata_fd);
 	    }
 	}
@@ -113,8 +117,7 @@ int ftp_data(char *buf, int direction, FILE *fp)
     return (ret);
 }
 
-/* These return vals are wrong */
-int sendfile(FILE *fp)
+unsigned long sendfile(FILE *fp)
 {
     int           s,i;
     unsigned long c = 0,total = 0UL;
@@ -130,19 +133,24 @@ int sendfile(FILE *fp)
 	    fflush(stdout);
 	}
     }
-    printf("\n");
+    printf("\n%lu bytes sent\n",total);
     return total;
 }
 		
 
-int recvfile(FILE *fp)
+unsigned long recvfile(FILE *fp)
 {
     int           s,i;
     unsigned long c = 0,total = 0UL;
     while ( ( s = net_read(ftpdata_fd,file_buffer,sizeof(file_buffer)) ) != -1 ) {
 	if ( s == 0 )
 	    break;
-        fwrite(file_buffer,1,s,fp);
+	if ( fp == stdout ) {
+	    file_buffer[s-1] = 0;
+	    print_native();	   
+	} else {
+	    fwrite(file_buffer,1,s,fp);
+	}
 	total += s;
 	if ( hash && fp != stdout &&  total/ 256 > c ) {
 	    i = total / 256 - c;
@@ -152,10 +160,22 @@ int recvfile(FILE *fp)
 	    fflush(stdout);
 	}
     }
-    if ( hash && fp != stdout )
-	printf("\n");
+    if ( fp != stdout )
+	printf("\n%lu bytes read\n",total);
     return total;
 	
 }
 
 
+void print_native()
+{
+    char  *ptr = file_buffer;
+
+    while ( *ptr ) {
+	if ( *ptr == CR )
+	    fputc('\n',stdout);
+	else if (*ptr != LF )
+	    fputc(*ptr,stdout);
+	++ptr;
+    }
+}

@@ -1,0 +1,2 @@
+zcc -m -o z88ftp -z80-verb -startup=5 -DZSOCK ftp.c cmd.c makeargs.c net_zsock.c main.c -lnet
+shellmak z88ftp z88ftp

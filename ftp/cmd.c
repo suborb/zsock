@@ -56,7 +56,7 @@ struct _commands commands[] = {
 	{"quit",0,"Terminate ftp session and exit",cmd_quit},
 	{"quote",1,"Send arbitary ftp command",cmd_quote},
 	{"recv",1,"Receive file",cmd_get},
-	{"rhelp",1,"Get help from remotet server",cmd_rhelp},
+	{"rhelp",1,"Get help from remote server",cmd_rhelp},
 	{"send",1,"Send one file",cmd_put},
 	{"size",1,"Get size of remote file",cmd_size},
 	{"user",1,"Send new user information",cmd_user},
@@ -66,8 +66,6 @@ struct _commands commands[] = {
 };
 
 unsigned char 	passive;	/* Passive mode toggle */
-
-char buffer[160];               /* Command buffer */
 
 
 int exec_cmd(int argc, char *argv[])
@@ -153,7 +151,8 @@ int cmd_binary(int argc, char *argv[])
 {
     if ( argc != 1 )
 	return -1;
-    ftp_send("TYPE I\r\n");
+    sprintf(buffer,"TYPE I"CRLF);
+    ftp_send(buffer);
     return 0;
 }
 
@@ -161,7 +160,8 @@ int cmd_ascii(int argc, char *argv[])
 {
     if ( argc != 1 )
 	return -1;
-    ftp_send("TYPE A\r\n");
+    sprintf(buffer,"TYPE A"CRLF);
+    ftp_send(buffer);
     return 0;
 }
 
@@ -169,7 +169,8 @@ int cmd_cdup(int argc, char *argv[])
 {
     if ( argc != 1 )
 	return -1;
-    ftp_send("CDUP\r\n");
+    sprintf(buffer,"CDUP"CRLF);
+    ftp_send(buffer);
     return 0;
 }
 
@@ -177,7 +178,8 @@ int cmd_pwd(int argc, char *argv[])
 {
     if ( argc != 1 )
 	return -1;
-    ftp_send("PWD\r\n");
+    sprintf(buffer,"PWD"CRLF);
+    ftp_send(buffer);
     return 0;
 }
 
@@ -190,7 +192,7 @@ int cmd_rhelp(int argc, char *argv[])
 	strcat(buffer," ");
 	strcat(buffer,argv[1]);
     }
-    strcat(buffer,"\r\n");
+    strcat(buffer,CRLF);
     ftp_send(buffer);
     return 0;
 }
@@ -199,7 +201,7 @@ int cmd_cd(int argc, char *argv[])
 {
     if ( argc != 2 )
 	return -1;
-    sprintf(buffer,"CWD %s\r\n",argv[1]);
+    sprintf(buffer,"CWD %s"CRLF,argv[1]);
     ftp_send(buffer);
     return 0;
 }
@@ -208,7 +210,7 @@ int cmd_delete(int argc, char *argv[])
 {
     if ( argc != 2 )
 	return -1;
-    sprintf(buffer,"DELE %s\r\n",argv[1]);
+    sprintf(buffer,"DELE %s"CRLF,argv[1]);
     ftp_send(buffer);
     return 0;
 }
@@ -216,6 +218,12 @@ int cmd_delete(int argc, char *argv[])
 int cmd_open(int argc, char *argv[])
 {
     tcpport_t port = 21;
+    int       ret;
+
+    if ( connected ) {
+	printf("Already connected\n");
+	return 0;
+    }
 
     if ( argc < 2 ) {
 	printf("open hostname [port]\n");
@@ -227,8 +235,15 @@ int cmd_open(int argc, char *argv[])
 	return -1;
     }
     if ( net_open_ctrl(argv[1],port) != - 1 ) {
-	while ( ftp_returncode() != 220 )
-	    ;;
+	while ( 1 ) {
+	    ret = ftp_returncode();
+	    if ( ret == 220 ) 
+		break;
+	    if ( ret == -1 ) {
+		net_close_ctrl();
+		exit(0);
+	    }
+	}
 	cmd_user(0,NULL);
     }
 
@@ -243,8 +258,11 @@ int cmd_close(int argc, char *argv[])
 
 int cmd_quit(int argc, char *argv[])
 {
-    if ( connected ) 
-	ftp_send("QUIT\r\n");
+    if ( connected ) {
+	sprintf(buffer,"QUIT"CRLF);
+	ftp_send(buffer);
+	net_close_ctrl();
+    }
     exit(0);
 }
 
@@ -259,7 +277,7 @@ int cmd_quote(int argc, char *argv[])
 	if ( i != argc - 1 )
 	    strcat(buffer," ");
     }
-    strcat(buffer,"\r\n");
+    strcat(buffer,CRLF);
     ftp_send(buffer);
     return 0;
 }
@@ -270,21 +288,29 @@ int cmd_user(int argc, char *argv[])
     int  ret;
     if ( argc != 2 ) {
 	printf("(username) "); fflush(stdout);
+#ifdef SCCZ80
+	fgets_net(user,sizeof(user),TRUE);
+#else
 	fgets(user,sizeof(user),stdin);
+#endif
     } else {
 	strncpy(user,argv[1],sizeof(user));
     }
     makeargs_rip(user);
-    sprintf(buffer,"USER %s\r\n",user);
+    sprintf(buffer,"USER %s"CRLF,user);
     ret = ftp_send(buffer);
     if ( ret != 331 ) {
 	return 0;
     }
     printf("Password: "); fflush(stdout);
     /* Need to cook terminal here */
-    fgets(user,sizeof(user),stdin);
+#ifdef SCCZ80
+	fgets_net(user,sizeof(user),FALSE);
+#else
+	fgets(user,sizeof(user),stdin);
+#endif
     makeargs_rip(user);
-    sprintf(buffer,"PASS %s\r\n",user);
+    sprintf(buffer,"PASS %s"CRLF,user);
     ftp_send(buffer);
     return 0;
 }
@@ -295,7 +321,7 @@ int cmd_size(int argc, char *argv[])
 {
     if ( argc != 2 )
 	return -1;
-    sprintf(buffer,"SIZE %s\r\n",argv[1]);
+    sprintf(buffer,"SIZE %s"CRLF,argv[1]);
     ftp_send(buffer);
     return 0;
 }
@@ -311,7 +337,7 @@ int cmd_ls(int argc, char *argv[])
 	strcat(buffer," ");
 	strcat(buffer,argv[1]);
     }
-    strcat(buffer,"\r\n");
+    strcat(buffer,CRLF);
     ftp_data(buffer,RETR,stdout);
     return 0;	
 }
@@ -325,10 +351,13 @@ int cmd_get(int argc, char *argv[])
 	return -1;
     }
     for ( i = 1 ; i < argc ; i++ ) {
-	sprintf(buffer,"RETR %s\r\n",argv[i]);
-	fp = fopen(argv[i],"w");
-	ftp_data(buffer,RETR,fp);
-	fclose(fp);
+	sprintf(buffer,"RETR %s"CRLF,argv[i]);
+	if ( (fp = fopen(argv[i],"w") ) == NULL ) {
+	    printf("Cannot open local file %s for writing\n",argv[i]);
+	} else {
+	    ftp_data(buffer,RETR,fp);
+	    fclose(fp);
+	}
     }
     return 0;	
 }
@@ -342,10 +371,13 @@ int cmd_put(int argc, char *argv[])
 	return -1;
     }
     for ( i = 1 ; i < argc ; i++ ) {
-	sprintf(buffer,"STOR %s\r\n",argv[i]);
-	fp = fopen(argv[i],"r");
-	ftp_data(buffer,STOR,fp);
-	fclose(fp);
+	sprintf(buffer,"STOR %s"CRLF,argv[i]);
+	if ( (fp = fopen(argv[i],"r") ) == NULL ) {
+	    printf("Cannot open local file %s for reading\n",argv[i]);
+	} else {
+	    ftp_data(buffer,STOR,fp);
+	    fclose(fp);
+	}
     }
     return 0;	
 }
